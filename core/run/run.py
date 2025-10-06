@@ -19,7 +19,7 @@ def signal_handler(msg, signal, frame):
 
 class Run:
     name = 'run'
-    def __init__(self, n_samples=10000, task=None, learner=None, save_path="logs", seed=0, network=None, **kwargs):
+    def __init__(self, n_samples=10000, task=None, learner=None, save_path="logs", seed=0, network=None, jit=False, **kwargs):
         self.n_samples = int(n_samples)
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.task = tasks[task]()
@@ -27,6 +27,7 @@ class Run:
         self.learner = learners[learner](networks[network], kwargs)
         self.logger = Logger(save_path)
         self.seed = int(seed)
+        self.jit = bool(jit)
 
     def start(self):
         torch.manual_seed(self.seed)
@@ -34,7 +35,7 @@ class Run:
 
         if self.task.criterion == 'cross_entropy':
             accuracy_per_step_size = []
-        self.learner.set_task(self.task)
+        self.learner.set_task(self.task, self.jit)
         if self.learner.extend:    
             extension = HesScale()
             extension.set_module_extension(GateLayer, GateLayerGrad())
