@@ -50,34 +50,15 @@ class FastFirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
 
         # 🚀 Group parameters by type for vectorized operations
         self.gate_params = []
-        self.weight_params = []
-        self.bias_params = []
-        self.other_params = []
+        self.non_gate_params = []
 
-        param_map = {}
-        # Assumes a naming convention like 'layer.gate', 'layer.weight', 'layer.bias'
+        # Separate parameters into gate and non-gate lists
         for group in self.param_groups:
-            # Create a base name map (e.g., 'layers.0.linear' -> {'gate': param, 'weight': param})
             for name, p in zip(group["names"], group["params"]):
-                state = self.state[p]
-                
-                base_name, p_type = name.rsplit('.', 1)
-
-                if base_name not in param_map:
-                    param_map[base_name] = {}
-                param_map[base_name][p_type] = p
-
-        for base_name, parts in param_map.items():
-            if 'gate' in parts and 'weight' in parts and 'bias' in parts:
-                self.gate_params.append(parts['gate'])
-                self.weight_params.append(parts['weight'])
-                self.bias_params.append(parts['bias'])
-                
-                # Initialize state for gate parameters
-                state = self.state[parts['gate']]
-            else:
-                # Handle parameters that don't fit the gate/weight/bias pattern
-                self.other_params.extend(list(parts.values()))
+                if 'gate' in name:
+                    self.gate_params.append(p)
+                else:
+                    self.non_gate_params.append(p)
 
     def step(self, closure=None):           
         group = self.param_groups[0] # Assuming one param group
@@ -85,7 +66,6 @@ class FastFirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
         lr = group['lr']
         weight_decay = group['weight_decay']
         sigma = group['sigma']
-        params_with_grad = self.weight_params + self.bias_params + self.other_params
 
         # === 1. Gather Tensors and Pre-compute Scalars ===
         grads = []
@@ -94,7 +74,7 @@ class FastFirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
         params_data = []
         bias_corrections = []
 
-        for p in params_with_grad:
+        for p in self.non_gate_params:
             if p.grad is None:
                 continue
             
@@ -106,12 +86,7 @@ class FastFirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
                 state["step"] = 0
                 state["avg_utility"] = torch.zeros_like(p.data)   
             state['step'] += 1
-            try:
-              avg_utilities.append(state['avg_utility'])
-              all_utilities.append(state['avg_utility'])
-            except Exception as e:
-              print(e)
-              print(state)
+            avg_utilities.append(state['avg_utility'])
             bias_corrections.append(1 - beta_utility ** state['step'])
 
         # === 2. Calculate Global Max Utility (Vectorized) === 🚀
@@ -120,18 +95,18 @@ class FastFirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
         torch._foreach_mul_(current_utilities, -1.0)
 
         # Update EMA of utility: avg_u = beta * avg_u + (1-beta) * u_t
-        torch._foreach_mul_(all_utilities, beta_utility)
-        torch._foreach_add_(all_utilities, current_utilities, alpha=1 - beta_utility)
+        torch._foreach_mul_(avg_utilities, beta_utility)
+        torch._foreach_add_(avg_utilities, current_utilities, alpha=1 - beta_utility)
 
         # Find the maximum utility across all parameters
         # We find the max of each tensor, stack them, and find the global max.
-        max_utils_tensor = torch.stack([u.max() for u in all_utilities])
+        max_utils_tensor = torch.stack([u.max() for u in avg_utilities])
         global_max_util = max_utils_tensor.max()
 
         # === 3. Update Parameters in Bulk (Vectorized) === 🚀
         
         # Calculate scaled utility: s = sigmoid((avg_u / bias_correction) / global_max)
-        scaled_utilities = avg_utilities 
+        scaled_utilities = [u.clone() for u in avg_utilities]
         torch._foreach_div_(scaled_utilities, bias_corrections)
         # Add a small epsilon for numerical stability
         torch._foreach_div_(scaled_utilities, global_max_util + 1e-8)
@@ -139,19 +114,18 @@ class FastFirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
         
         # Generate noise for all parameters at once
         noise_list = [torch.randn_like(p) for p in params_data]
+        torch._foreach_mul_(noise_list, sigma)
         
         # Calculate noise term: noise * (1 - scaled_utility)
         one_minus_scaled = [torch.sub(1.0, s) for s in scaled_utilities]
         torch._foreach_mul_(noise_list, one_minus_scaled)
         
-        # Add the noise term to the gradients
-        torch._foreach_add_(grads, noise_list)
-
         # Perform the final SGD update step with weight decay
         # p = p * (1 - lr * wd) - lr * (g + noise_term)
         torch._foreach_mul_(params_data, 1.0 - lr * weight_decay)
-        
         torch._foreach_add_(params_data, grads, alpha=-lr)
+        torch._foreach_add_(params_data, noise_list, alpha=-lr)
+
 
 class FirstOrderNonprotectingLocalUPGD(torch.optim.Optimizer):
     def __init__(self, params, lr=1e-5, weight_decay=0.0, beta_utility=0.0, sigma=1.0):
