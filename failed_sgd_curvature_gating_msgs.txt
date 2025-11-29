@@ -1,0 +1,30 @@
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner sgd_curvature_gating --seed 2 --lr 0.01 --sigma 0.1 --weight_decay 0.01 --beta_utility 0.9999 --curvature_threshold 0.01 --curvature_scale 0.1 --beta_curvature 0.9 --network fully_connected_relu_with_hooks --n_samples 1000000 --compute_curvature_every 1 --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 614, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 110, in start
+    optimizer = self.learner.optimizer(
+                ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: SGDCurvatureGating.__init__() got an unexpected keyword argument 'disable_regularization'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner sgd_curvature_gating --seed 2 --lr 0.01 --sigma 0.1 --weight_decay 0.01 --beta_utility 0.9999 --curvature_threshold 0.01 --curvature_scale 0.01 --beta_curvature 0.9 --network fully_connected_relu_with_hooks --n_samples 1000000 --compute_curvature_every 1 --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 614, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 110, in start
+    optimizer = self.learner.optimizer(
+                ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: SGDCurvatureGating.__init__() got an unexpected keyword argument 'disable_regularization'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner sgd_curvature_gating --seed 2 --lr 0.01 --sigma 0.1 --weight_decay 0.01 --beta_utility 0.9999 --curvature_threshold 0.01 --curvature_scale 0.01 --beta_curvature 0.9 --network fully_connected_relu_with_hooks --n_samples 1000000 --compute_curvature_every 1 --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 614, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 110, in start
+    optimizer = self.learner.optimizer(
+                ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: SGDCurvatureGating.__init__() got an unexpected keyword argument 'disable_regularization'
+ 
+

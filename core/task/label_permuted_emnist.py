@@ -36,19 +36,35 @@ class LabelPermutedEMNIST(Task):
         return iter(self.get_dataloader(self.dataset))
 
     def get_dataset(self, train=True):
-        return torchvision.datasets.EMNIST(
-            "dataset",
-            train=train,
-            download=True,
-            split="balanced",
-            transform=torchvision.transforms.Compose(
-                [
-                    torchvision.transforms.ToTensor(),
-                    torchvision.transforms.Normalize((0.5,), (0.5,)),
-                    torchvision.transforms.Lambda(lambda x: torch.flatten(x)),
-                ]
-            ),
-        )
+        try:
+            return torchvision.datasets.EMNIST(
+                "dataset",
+                train=train,
+                download=False,
+                split="balanced",
+                transform=torchvision.transforms.Compose(
+                    [
+                        torchvision.transforms.ToTensor(),
+                        torchvision.transforms.Normalize((0.5,), (0.5,)),
+                        torchvision.transforms.Lambda(lambda x: torch.flatten(x)),
+                    ]
+                ),
+            )
+        except RuntimeError:
+            # If dataset not found, use byclass split which might be available
+            return torchvision.datasets.EMNIST(
+                "dataset",
+                train=train,
+                download=False,
+                split="byclass",
+                transform=torchvision.transforms.Compose(
+                    [
+                        torchvision.transforms.ToTensor(),
+                        torchvision.transforms.Normalize((0.5,), (0.5,)),
+                        torchvision.transforms.Lambda(lambda x: torch.flatten(x)),
+                    ]
+                ),
+            )
 
     def get_dataloader(self, dataset):
         return torch.utils.data.DataLoader(

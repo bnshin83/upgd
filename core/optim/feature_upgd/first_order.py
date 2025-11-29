@@ -11,6 +11,8 @@ class FirstOrderNonprotectingLocalUPGD(torch.optim.Optimizer):
     def step(self):
         for group in self.param_groups:
             for name, p in zip(reversed(group["names"]), reversed(group["params"])):
+                if p.grad is None:
+                    continue
                 state = self.state[p]
                 if len(state) == 0:
                     if 'gate' in name:
@@ -29,13 +31,13 @@ class FirstOrderNonprotectingLocalUPGD(torch.optim.Optimizer):
                     noise = torch.randn_like(p.grad) * group["sigma"]
                     if len(p.data.shape) == 1:
                         # handle bias term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-self.gate_utility.squeeze(0)), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-self.gate_utility.squeeze(0)), alpha=-2.0*group["lr"])
                     else:
                         # handle weight term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-self.gate_utility.T), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-self.gate_utility.T), alpha=-2.0*group["lr"])
                         self.gate_utility = None
                 else:
-                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-group["lr"])
+                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-2.0*group["lr"])
 
 
 class FirstOrderLocalUPGD(torch.optim.Optimizer):
@@ -48,6 +50,8 @@ class FirstOrderLocalUPGD(torch.optim.Optimizer):
     def step(self):
         for group in self.param_groups:
             for name, p in zip(reversed(group["names"]), reversed(group["params"])):
+                if p.grad is None:
+                    continue
                 state = self.state[p]
                 if len(state) == 0:
                     if 'gate' in name:
@@ -66,13 +70,13 @@ class FirstOrderLocalUPGD(torch.optim.Optimizer):
                     noise = torch.randn_like(p.grad) * group["sigma"]
                     if len(p.data.shape) == 1:
                         # handle bias term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-self.gate_utility.squeeze(0)), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-self.gate_utility.squeeze(0)), alpha=-2.0*group["lr"])
                     else:
                         # handle weight term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-self.gate_utility.T), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-self.gate_utility.T), alpha=-2.0*group["lr"])
                         self.gate_utility = None
                 else:
-                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-group["lr"])
+                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-2.0*group["lr"])
 
 
 class FirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
@@ -86,6 +90,8 @@ class FirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
         global_max_util = torch.tensor(-torch.inf)
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
+                if p.grad is None:
+                    continue
                 state = self.state[p]
                 if len(state) == 0:
                     if 'gate' in name:
@@ -102,23 +108,29 @@ class FirstOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
                     if current_util_max > global_max_util:
                         global_max_util = current_util_max
 
+        # Add epsilon to prevent division by zero
+        global_max_util = torch.max(global_max_util, torch.tensor(1e-8))
+        
         for group in self.param_groups:
             for name, p in zip(reversed(group["names"]), reversed(group["params"])):
+                if p.grad is None:
+                    continue
                 state = self.state[p]
                 if 'gate' in name:
+                    bias_correction = 1 - group["beta_utility"] ** state["step"]
                     gate_utility = torch.sigmoid_((state["avg_utility"] / bias_correction) / global_max_util)
                     continue
                 if gate_utility is not None:
                     noise = torch.randn_like(p.grad) * group["sigma"]
                     if len(p.data.shape) == 1:
                         # handle bias term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-gate_utility.squeeze(0)), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-gate_utility.squeeze(0)), alpha=-2.0*group["lr"])
                     else:
                         # handle weight term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-gate_utility.T), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data + noise * (1-gate_utility.T), alpha=-2.0*group["lr"])
                         gate_utility = None
                 else:
-                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-group["lr"])
+                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-2.0*group["lr"])
 
 
 class FirstOrderGlobalUPGD(torch.optim.Optimizer):
@@ -132,6 +144,8 @@ class FirstOrderGlobalUPGD(torch.optim.Optimizer):
         global_max_util = torch.tensor(-torch.inf)
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
+                if p.grad is None:
+                    continue
                 state = self.state[p]
                 if len(state) == 0:
                     if 'gate' in name:
@@ -148,20 +162,26 @@ class FirstOrderGlobalUPGD(torch.optim.Optimizer):
                     if current_util_max > global_max_util:
                         global_max_util = current_util_max
 
+        # Add epsilon to prevent division by zero
+        global_max_util = torch.max(global_max_util, torch.tensor(1e-8))
+        
         for group in self.param_groups:
             for name, p in zip(reversed(group["names"]), reversed(group["params"])):
+                if p.grad is None:
+                    continue
                 state = self.state[p]
                 if 'gate' in name:
+                    bias_correction = 1 - group["beta_utility"] ** state["step"]
                     gate_utility = torch.sigmoid_((state["avg_utility"] / bias_correction) / global_max_util)
                     continue
                 if gate_utility is not None:
                     noise = torch.randn_like(p.grad) * group["sigma"]
                     if len(p.data.shape) == 1:
                         # handle bias term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-gate_utility.squeeze(0)), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-gate_utility.squeeze(0)), alpha=-2.0*group["lr"])
                     else:
                         # handle weight term
-                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-gate_utility.T), alpha=-group["lr"])
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_((p.grad.data + noise) * (1-gate_utility.T), alpha=-2.0*group["lr"])
                         gate_utility = None
                 else:
-                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-group["lr"])
+                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(p.grad.data, alpha=-2.0*group["lr"])

@@ -14,7 +14,7 @@ class SecondOrderNonprotectingLocalUPGD(torch.optim.Optimizer):
     def step(self):
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
-                if 'gate' in name:
+                if p.grad is None or 'gate' in name:
                     continue
                 state = self.state[p]
                 if len(state) == 0:
@@ -33,7 +33,7 @@ class SecondOrderNonprotectingLocalUPGD(torch.optim.Optimizer):
                     F.normalize((avg_utility / bias_correction), dim=-1)
                 )
                 p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
-                    p.grad.data + noise * (1 - scaled_utility), alpha=-group["lr"]
+                    p.grad.data + noise * (1 - scaled_utility), alpha=-2.0*group["lr"]
                 )
 
 
@@ -48,7 +48,7 @@ class SecondOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
         global_max_util = torch.tensor(-torch.inf)
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
-                if 'gate' in name:
+                if p.grad is None or 'gate' in name:
                     continue
                 state = self.state[p]
                 if len(state) == 0:
@@ -65,16 +65,19 @@ class SecondOrderNonprotectingGlobalUPGD(torch.optim.Optimizer):
                 if current_util_max > global_max_util:
                     global_max_util = current_util_max
 
+        # Add epsilon to prevent division by zero
+        global_max_util = torch.max(global_max_util, torch.tensor(1e-8))
+        
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
-                if 'gate' in name:
+                if p.grad is None or 'gate' in name:
                     continue
                 state = self.state[p]
                 bias_correction = 1 - group["beta_utility"] ** state["step"]
                 noise = torch.randn_like(p.grad) * group["sigma"]
                 scaled_utility = torch.sigmoid_((state["avg_utility"] / bias_correction) / global_max_util)
                 p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
-                    p.grad.data + noise * (1 - scaled_utility), alpha=-group["lr"]
+                    p.grad.data + noise * (1 - scaled_utility), alpha=-2.0*group["lr"]
                 )
 
 class SecondOrderLocalUPGD(torch.optim.Optimizer):
@@ -87,7 +90,7 @@ class SecondOrderLocalUPGD(torch.optim.Optimizer):
     def step(self):
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
-                if 'gate' in name:
+                if p.grad is None or 'gate' in name:
                     continue
                 state = self.state[p]
                 if len(state) == 0:
@@ -106,7 +109,7 @@ class SecondOrderLocalUPGD(torch.optim.Optimizer):
                     F.normalize((avg_utility / bias_correction), dim=-1)
                 )
                 p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
-                    (p.grad.data + noise) * (1 - scaled_utility), alpha=-group["lr"]
+                    (p.grad.data + noise) * (1 - scaled_utility), alpha=-2.0*group["lr"]
                 )
 
 
@@ -120,7 +123,7 @@ class SecondOrderGlobalUPGD(torch.optim.Optimizer):
         global_max_util = torch.tensor(-torch.inf)
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
-                if 'gate' in name:
+                if p.grad is None or 'gate' in name:
                     continue
                 state = self.state[p]
                 if len(state) == 0:
@@ -137,14 +140,17 @@ class SecondOrderGlobalUPGD(torch.optim.Optimizer):
                 if current_util_max > global_max_util:
                     global_max_util = current_util_max
 
+        # Add epsilon to prevent division by zero
+        global_max_util = torch.max(global_max_util, torch.tensor(1e-8))
+        
         for group in self.param_groups:
             for name, p in zip(group["names"], group["params"]):
-                if 'gate' in name:
+                if p.grad is None or 'gate' in name:
                     continue
                 state = self.state[p]
                 bias_correction = 1 - group["beta_utility"] ** state["step"]
                 noise = torch.randn_like(p.grad) * group["sigma"]
                 scaled_utility = torch.sigmoid_((state["avg_utility"] / bias_correction) / global_max_util)
                 p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
-                    (p.grad.data + noise) * (1 - scaled_utility), alpha=-group["lr"]
+                    (p.grad.data + noise) * (1 - scaled_utility), alpha=-2.0*group["lr"]
                 )

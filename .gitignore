@@ -2,5 +2,24 @@
 build/
 *egg*
 generated_cmds/
-logs/
 dataset/
+# Large experiment directories
+wandb/
+logs/
+
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Screenshots and images (optional - comment out if you want to include them)
+*.png
+*.jpg
+*.jpeg
+
+# CSV exports
+wandb_export_*.csv
+
+# Processed data
+processed_imagenet.pkl

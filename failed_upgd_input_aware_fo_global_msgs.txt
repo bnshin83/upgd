@@ -1,0 +1,241 @@
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner upgd_input_aware_fo_global --seed 0 --lr 0.01 --sigma 0.001 --network fully_connected_relu_with_hooks --n_samples 800000 --curvature_threshold 0.05 --lambda_max 1.0 --hutchinson_samples 5 --compute_curvature_every 1 --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 709, in <module>
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 451, in start
+  File "/scratch/gautschi/shin283/upgd/core/logger.py", line 64, in log
+    with open(self.log_path, "w") as outfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'logs/input_permuted_mnist_stats/input_aware_upgd_fo_global/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_curvature_threshold_0.05_lambda_max_1.0_hutchinson_samples_5_n_samples_800000//0.json'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.1 --beta_utility 0.9999 --weight_decay 0.01 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.01 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 630, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 283, in start
+    optimizer.step()
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/optim/optimizer.py", line 385, in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/core/optim/weight_upgd/input_aware.py", line 229, in step
+    gating_factor = max(1 - scaled_utility * lambda_reg, 0.0)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Boolean value of Tensor with more than one value is ambiguous
+ 
+
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.1 --beta_utility 0.9999 --weight_decay 0.01 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.01 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 630, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 283, in start
+    optimizer.step()
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/optim/optimizer.py", line 385, in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/core/optim/weight_upgd/input_aware.py", line 229, in step
+    gating_factor = max(1 - scaled_utility * lambda_reg, 0.0)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Boolean value of Tensor with more than one value is ambiguous
+ 
+
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.1 --beta_utility 0.9999 --weight_decay 0.01 --network fully_connected_relu_with_hooks --n_samples 10 --curvature_threshold 0.01 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path /tmp/test_logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 630, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 283, in start
+    optimizer.step()
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/optim/optimizer.py", line 385, in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/core/optim/weight_upgd/input_aware.py", line 229, in step
+    gating_factor = max(1 - scaled_utility * lambda_reg, 0.0)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Boolean value of Tensor with more than one value is ambiguous
+ 
+
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.1 --beta_utility 0.9999 --weight_decay 0.01 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.01 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 630, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 283, in start
+    optimizer.step()
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/optim/optimizer.py", line 385, in wrapper
+    out = func(*args, **kwargs)
+          ^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/core/optim/weight_upgd/input_aware.py", line 229, in step
+    gating_factor = max(1 - scaled_utility * lambda_reg, 0.0)
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: Boolean value of Tensor with more than one value is ambiguous
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_cifar10_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.1 --beta_utility 0.9999 --weight_decay 0.01 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.01 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 623, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 183, in start
+    output = self.learner.predict(input)
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/core/learner/learner.py", line 19, in predict
+    output = self.network(input)
+             ^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/nn/modules/container.py", line 217, in forward
+    input = module(input)
+            ^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1511, in _wrapped_call_impl
+    return self._call_impl(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/nn/modules/module.py", line 1520, in _call_impl
+    return forward_call(*args, **kwargs)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/scratch/gautschi/shin283/upgd/.upgd/lib/python3.12/site-packages/torch/nn/modules/linear.py", line 116, in forward
+    return F.linear(input, self.weight, self.bias)
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+RuntimeError: mat1 and mat2 shapes cannot be multiplied (96x32 and 3072x300)
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.05 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 628, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 402, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 628, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 402, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 628, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 402, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 1000000 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 628, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 402, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 50 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_debug_wandb 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 628, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 402, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 20 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_debug_wandb2 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 628, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 402, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 20 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_debug4 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 633, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 407, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 20 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_debug5 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 637, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 411, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 20 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_debug6 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 637, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 411, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 20 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_debug7 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 648, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 422, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 20 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_debug8 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 658, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 424, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 30 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_fix_test 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 659, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 425, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 30 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_fix_test2 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 644, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 410, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_input_aware_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.9 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 30 --curvature_threshold 0.005 --lambda_max 2.0 --lambda_scale 0.1 --hutchinson_samples 5 --compute_curvature_every 1 --disable_regularization True --disable_gating False --save_path logs_fix_test3 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 651, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 410, in start
+    utility_stats = self.learner.optimizer.get_utility_stats()
+                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: InputAwareFirstOrderGlobalUPGD.get_utility_stats() missing 1 required positional argument: 'self'
+ 
+

@@ -65,7 +65,7 @@ python core/plot/plotter_utility.py
 #### Input-permuted MNIST (Figure 3):
 You first need to define the grid search of each method from here `experiments/input_permuted_mnist.py` then you generate then python cmds using:
 ```sh
-python experiments/input_permuted_mnist.py
+python experiments/input_permuted_mnist.pys
 ```
 This would generate a list of python cmds you need to run them. After they are done, the results would be saved in `logs/` in a JSON format. To plot, use the following after choosing what to plot:
 ```sh

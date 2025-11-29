@@ -1,0 +1,306 @@
+%PDF-1.4
+%‚„œ”
+1 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+2 0 obj
+<< /Length 2929 >>
+stream
+BT /F1 9 Tf 1 0 0 1 54.00 805.89 Tm (run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 54.00 795.09 Tm (/scratch/gautschi/shin283/upgd/core/run/run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 541.28 795.09 Tm (2025-09-23 08:29) Tj ET
+BT /F1 8 Tf 1 0 0 1 541.28 28.80 Tm (Page 1) Tj ET
+BT /F1 9 Tf 11.25 TL 1 0 0 1 54.00 750.99 Tm
+(import torch, sys, os) Tj
+T* (from core.utils import tasks, networks, learners, criterions) Tj
+T* (from core.logger import Logger) Tj
+T* (from backpack import backpack, extend) Tj
+T* (sys.path.insert\(1, os.getcwd\(\)\)) Tj
+T* (from HesScale.hesscale import HesScale) Tj
+T* (from core.network.gate import GateLayer, GateLayerGrad) Tj
+T* (import signal) Tj
+T* (import traceback) Tj
+T* (import time) Tj
+T* (from functools import partial) Tj
+T* () Tj
+T* (def signal_handler\(msg, signal, frame\):) Tj
+T* (    print\('Exit signal: ', signal\)) Tj
+T* (    cmd, learner = msg) Tj
+T* (    with open\(f'timeout_{learner}.txt', 'a'\) as f:) Tj
+T* (        f.write\(f"{cmd} \\n"\)) Tj
+T* (    exit\(0\)) Tj
+T* () Tj
+T* (class RunStats:) Tj
+T* (    name = 'run_stats') Tj
+T* (    def __init__\(self, n_samples=10000, task=None, learner=None, save_path="logs", seed=0,) Tj
+T* ( network=None, **kwargs\):) Tj
+T* (        self.n_samples = int\(n_samples\)) Tj
+T* (        self.device = torch.device\('cuda' if torch.cuda.is_available\(\) else 'cpu'\)) Tj
+T* (        self.task = tasks[task]\(\)) Tj
+T* (        self.task_name = task) Tj
+T* (        self.learner = learners[learner]\(networks[network], kwargs\)) Tj
+T* (        self.logger = Logger\(save_path\)) Tj
+T* (        self.seed = int\(seed\)) Tj
+T* () Tj
+T* (    def start\(self\):) Tj
+T* (        torch.manual_seed\(self.seed\)) Tj
+T* (        losses_per_task = []) Tj
+T* (        plasticity_per_task = []) Tj
+T* (        n_dead_units_per_task = []) Tj
+T* (        weight_rank_per_task = []) Tj
+T* (        weight_l2_per_task = []) Tj
+T* (        weight_l1_per_task = []) Tj
+T* (        grad_l2_per_task = []) Tj
+T* (        grad_l1_per_task = []) Tj
+T* (        grad_l0_per_task = []) Tj
+T* () Tj
+T* (        if self.task.criterion == 'cross_entropy':) Tj
+T* (            accuracy_per_task = []) Tj
+T* (        self.learner.set_task\(self.task\)) Tj
+T* (        if self.learner.extend:    ) Tj
+T* (            extension = HesScale\(\)) Tj
+T* (            extension.set_module_extension\(GateLayer, GateLayerGrad\(\)\)) Tj
+T* (        criterion = extend\(criterions[self.task.criterion]\(\)\) if self.learner.extend else ) Tj
+T* (criterions[self.task.criterion]\(\)) Tj
+T* (        optimizer = self.learner.optimizer\() Tj
+T* (            self.learner.parameters, **self.learner.optim_kwargs) Tj
+T* (        \)) Tj
+T* () Tj
+T* (        losses_per_step = []) Tj
+T* (        plasticity_per_step = []) Tj
+T* (        n_dead_units_per_step = []) Tj
+T* (        weight_rank_per_step = []) Tj
+T* (        weight_l2_per_step = []) Tj
+T* (        weight_l1_per_step = []) Tj
+ET
+endstream
+endobj
+3 0 obj
+<< /Length 3522 >>
+stream
+BT /F1 9 Tf 1 0 0 1 54.00 805.89 Tm (run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 54.00 795.09 Tm (/scratch/gautschi/shin283/upgd/core/run/run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 541.28 795.09 Tm (2025-09-23 08:29) Tj ET
+BT /F1 8 Tf 1 0 0 1 541.28 28.80 Tm (Page 2) Tj ET
+BT /F1 9 Tf 11.25 TL 1 0 0 1 54.00 750.99 Tm
+(        grad_l2_per_step = []) Tj
+T* (        grad_l1_per_step = []) Tj
+T* (        grad_l0_per_step = []) Tj
+T* () Tj
+T* (        if self.task.criterion == 'cross_entropy':) Tj
+T* (            accuracy_per_step = []) Tj
+T* () Tj
+T* (        for i in range\(self.n_samples\):) Tj
+T* (            input, target = next\(self.task\)) Tj
+T* (            input, target = input.to\(self.device\), target.to\(self.device\)) Tj
+T* (            optimizer.zero_grad\(\)) Tj
+T* (            output = self.learner.predict\(input\)) Tj
+T* (            loss = criterion\(output, target\)) Tj
+T* (            if self.learner.extend:) Tj
+T* (                with backpack\(extension\):) Tj
+T* (                    loss.backward\(\)) Tj
+T* (            else:) Tj
+T* (                loss.backward\(\)) Tj
+T* (            optimizer.step\(\)) Tj
+T* (            losses_per_step.append\(loss.item\(\)\)) Tj
+T* (            if self.task.criterion == 'cross_entropy':) Tj
+T* (                accuracy_per_step.append\(\(output.argmax\(dim=1\) == target\).float\(\).mean\(\).i) Tj
+T* (tem\(\)\)) Tj
+T* () Tj
+T* (            # compute some statistics after each task change) Tj
+T* (            with torch.no_grad\(\):) Tj
+T* (                output_new = self.learner.predict\(input\)) Tj
+T* (                loss_after = criterion\(output_new, target\)) Tj
+T* (                loss_before = torch.clamp\(loss, min=1e-8\)) Tj
+T* (                plasticity_per_step.append\(torch.clamp\(\(1-loss_after/loss_before\), min=0.0) Tj
+T* (, max=1.0\).item\(\)\)) Tj
+T* (            n_dead_units = 0) Tj
+T* (            for _, value in self.learner.network.activations.items\(\):) Tj
+T* (                n_dead_units += value) Tj
+T* (            n_dead_units_per_step.append\(n_dead_units / self.learner.network.n_units\)) Tj
+T* () Tj
+T* (            sample_weight_rank = 0.0) Tj
+T* (            sample_max_rank = 0.0) Tj
+T* (            sample_weight_l2 = 0.0) Tj
+T* (            sample_grad_l2 = 0.0) Tj
+T* (            sample_weight_l1 = 0.0) Tj
+T* (            sample_grad_l1 = 0.0) Tj
+T* (            sample_grad_l0 = 0.0) Tj
+T* (            sample_n_weights = 0.0) Tj
+T* () Tj
+T* (            for name, param in self.learner.network.named_parameters\(\):) Tj
+T* (                if 'weight' in name:) Tj
+T* (                    if 'conv' in name:) Tj
+T* (                        sample_weight_rank += torch.torch.linalg.matrix_rank\(param.data\).f) Tj
+T* (loat\(\).mean\(\)) Tj
+T* (                        sample_max_rank += torch.min\(torch.tensor\(param.data.shape\)[-2:]\)) Tj
+T* (                    else:) Tj
+T* (                        sample_weight_rank += torch.linalg.matrix_rank\(param.data\)) Tj
+T* (                        sample_max_rank += torch.min\(torch.tensor\(param.data.shape\)\)) Tj
+T* (                    sample_weight_l2 += torch.norm\(param.data, p=2\) ** 2) Tj
+T* (                    sample_weight_l1 += torch.norm\(param.data, p=1\)) Tj
+T* () Tj
+T* (                    sample_grad_l2 += torch.norm\(param.grad.data, p=2\) ** 2) Tj
+T* (                    sample_grad_l1 += torch.norm\(param.grad.data, p=1\)) Tj
+T* () Tj
+T* (                    sample_grad_l0 += torch.norm\(param.grad.data, p=0\)) Tj
+ET
+endstream
+endobj
+4 0 obj
+<< /Length 3930 >>
+stream
+BT /F1 9 Tf 1 0 0 1 54.00 805.89 Tm (run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 54.00 795.09 Tm (/scratch/gautschi/shin283/upgd/core/run/run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 541.28 795.09 Tm (2025-09-23 08:29) Tj ET
+BT /F1 8 Tf 1 0 0 1 541.28 28.80 Tm (Page 3) Tj ET
+BT /F1 9 Tf 11.25 TL 1 0 0 1 54.00 750.99 Tm
+(                    sample_n_weights += torch.numel\(param.data\)) Tj
+T* () Tj
+T* (            weight_l2_per_step.append\(sample_weight_l2.sqrt\(\).item\(\)\)) Tj
+T* (            weight_l1_per_step.append\(sample_weight_l1.item\(\)\)) Tj
+T* (            grad_l2_per_step.append\(sample_grad_l2.sqrt\(\).item\(\)\)) Tj
+T* (            grad_l1_per_step.append\(sample_grad_l1.item\(\)\)) Tj
+T* (            grad_l0_per_step.append\(sample_grad_l0.item\(\)/sample_n_weights\)) Tj
+T* (            weight_rank_per_step.append\(sample_weight_rank.item\(\) / sample_max_rank.item\(\)) Tj
+T* (\)) Tj
+T* () Tj
+T* () Tj
+T* (            if i % self.task.change_freq == 0:) Tj
+T* (                losses_per_task.append\(sum\(losses_per_step\) / len\(losses_per_step\)\)) Tj
+T* (                if self.task.criterion == 'cross_entropy':) Tj
+T* (                    accuracy_per_task.append\(sum\(accuracy_per_step\) / len\(accuracy_per_ste) Tj
+T* (p\)\)) Tj
+T* (                plasticity_per_task.append\(sum\(plasticity_per_step\) / len\(plasticity_per_s) Tj
+T* (tep\)\)) Tj
+T* (                n_dead_units_per_task.append\(sum\(n_dead_units_per_step\) / len\(n_dead_units) Tj
+T* (_per_step\)\)) Tj
+T* (                weight_rank_per_task.append\(sum\(weight_rank_per_step\) / len\(weight_rank_pe) Tj
+T* (r_step\)\)) Tj
+T* (                weight_l2_per_task.append\(sum\(weight_l2_per_step\) / len\(weight_l2_per_step) Tj
+T* (\)\)) Tj
+T* (                weight_l1_per_task.append\(sum\(weight_l1_per_step\) / len\(weight_l1_per_step) Tj
+T* (\)\)) Tj
+T* (                grad_l2_per_task.append\(sum\(grad_l2_per_step\) / len\(grad_l2_per_step\)\)) Tj
+T* (                grad_l1_per_task.append\(sum\(grad_l1_per_step\) / len\(grad_l1_per_step\)\)) Tj
+T* (                grad_l0_per_task.append\(sum\(grad_l0_per_step\) / len\(grad_l0_per_step\)\)) Tj
+T* () Tj
+T* (                losses_per_step = []) Tj
+T* (                if self.task.criterion == 'cross_entropy':) Tj
+T* (                    accuracy_per_step = []) Tj
+T* (                plasticity_per_step = []) Tj
+T* (                n_dead_units_per_step = []) Tj
+T* (                weight_rank_per_step = []) Tj
+T* (                weight_l2_per_step = []) Tj
+T* (                weight_l1_per_step = []) Tj
+T* (                grad_l2_per_step = []) Tj
+T* (                grad_l1_per_step = []) Tj
+T* (                grad_l0_per_step = []) Tj
+T* () Tj
+T* () Tj
+T* (        if self.task.criterion == 'cross_entropy':) Tj
+T* (            self.logger.log\(losses=losses_per_task,) Tj
+T* (                            accuracies=accuracy_per_task,) Tj
+T* (                            plasticity_per_task=plasticity_per_task,) Tj
+T* (                            task=self.task_name, ) Tj
+T* (                            learner=self.learner.name,) Tj
+T* (                            network=self.learner.network.name,) Tj
+T* (                            optimizer_hps=self.learner.optim_kwargs,) Tj
+T* (                            n_samples=self.n_samples,) Tj
+T* (                            seed=self.seed,) Tj
+T* (                            n_dead_units_per_task=n_dead_units_per_task,) Tj
+T* (                            weight_rank_per_task=weight_rank_per_task,) Tj
+T* (                            weight_l2_per_task=weight_l2_per_task,) Tj
+T* (                            weight_l1_per_task=weight_l1_per_task,) Tj
+T* (                            grad_l2_per_task=grad_l2_per_task,) Tj
+T* (                            grad_l0_per_task=grad_l0_per_task,) Tj
+T* (                            grad_l1_per_task=grad_l1_per_task,) Tj
+T* (            \)) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Length 2375 >>
+stream
+BT /F1 9 Tf 1 0 0 1 54.00 805.89 Tm (run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 54.00 795.09 Tm (/scratch/gautschi/shin283/upgd/core/run/run_stats.py) Tj ET
+BT /F1 7 Tf 1 0 0 1 541.28 795.09 Tm (2025-09-23 08:29) Tj ET
+BT /F1 8 Tf 1 0 0 1 541.28 28.80 Tm (Page 4) Tj ET
+BT /F1 9 Tf 11.25 TL 1 0 0 1 54.00 750.99 Tm
+(        else:) Tj
+T* (            self.logger.log\(losses=losses_per_task,) Tj
+T* (                            plasticity=plasticity_per_task,) Tj
+T* (                            task=self.task_name,) Tj
+T* (                            learner=self.learner.name,) Tj
+T* (                            network=self.learner.network.name,) Tj
+T* (                            optimizer_hps=self.learner.optim_kwargs,) Tj
+T* (                            n_samples=self.n_samples,) Tj
+T* (                            seed=self.seed,) Tj
+T* (                            n_dead_units_per_task=n_dead_units_per_task,) Tj
+T* (                            weight_rank_per_task=weight_rank_per_task,) Tj
+T* (                            weight_l2_per_task=weight_l2_per_task,) Tj
+T* (                            weight_l1_per_task=weight_l1_per_task,) Tj
+T* (                            grad_l2_per_task=grad_l2_per_task,) Tj
+T* (                            grad_l0_per_task=grad_l0_per_task,) Tj
+T* (                            grad_l1_per_task=grad_l1_per_task,) Tj
+T* (            \)) Tj
+T* () Tj
+T* () Tj
+T* (if __name__ == "__main__":) Tj
+T* (    # start the run using the command line arguments) Tj
+T* (    ll = sys.argv[1:]) Tj
+T* (    args = {k[2:]:v for k,v in zip\(ll[::2], ll[1::2]\)}) Tj
+T* (    run = RunStats\(**args\)) Tj
+T* (    cmd = f"python3 {' '.join\(sys.argv\)}") Tj
+T* (    signal.signal\(signal.SIGUSR1, partial\(signal_handler, \(cmd, args['learner']\)\)\)) Tj
+T* (    current_time = time.time\(\)) Tj
+T* (    try:) Tj
+T* (        run.start\(\)) Tj
+T* (        with open\(f"finished_{args['learner']}.txt", "a"\) as f:) Tj
+T* (            f.write\(f"{cmd} time_elapsed: {time.time\(\)-current_time} \\n"\)) Tj
+T* (    except Exception as e:) Tj
+T* (        with open\(f"failed_{args['learner']}.txt", "a"\) as f:) Tj
+T* (            f.write\(f"{cmd} \\n"\)) Tj
+T* (        with open\(f"failed_{args['learner']}_msgs.txt", "a"\) as f:) Tj
+T* (            f.write\(f"{cmd} \\n"\)) Tj
+T* (            f.write\(f"{traceback.format_exc\(\)} \\n\\n"\)) Tj
+ET
+endstream
+endobj
+6 0 obj
+<< /Type /Pages /Kids [ 7 0 R 8 0 R 9 0 R 10 0 R ] /Count 4 >>
+endobj
+7 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R >> >> /Contents 2 0 R >>
+endobj
+8 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R >> >> /Contents 3 0 R >>
+endobj
+9 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R >> >> /Contents 4 0 R >>
+endobj
+10 0 obj
+<< /Type /Page /Parent 6 0 R /MediaBox [0 0 595.28 841.89] /Resources << /Font << /F1 1 0 R >> >> /Contents 5 0 R >>
+endobj
+11 0 obj
+<< /Type /Catalog /Pages 6 0 R >>
+endobj
+xref
+0 12
+0000000000 65535 f 
+0000000015 00000 n 
+0000000083 00000 n 
+0000003063 00000 n 
+0000006636 00000 n 
+0000010617 00000 n 
+0000013043 00000 n 
+0000013121 00000 n 
+0000013253 00000 n 
+0000013385 00000 n 
+0000013517 00000 n 
+0000013650 00000 n 
+trailer
+<< /Size 12 /Root 11 0 R >>
+startxref
+13700
+%%EOF

@@ -1,0 +1,30 @@
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner upgd_fo_global --seed 0 --lr 0.01 --sigma 0.001 --network fully_connected_relu_with_hooks --n_samples 1000000 --compute_curvature_every 1000000 --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 854, in <module>
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 581, in start
+  File "/scratch/gautschi/shin283/upgd/core/logger.py", line 64, in log
+    with open(self.log_path, "w") as outfile:
+         ^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: 'logs/input_permuted_mnist_stats/upgd_fo_global/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_n_samples_1000000//0.json'
+ 
+
+python3 core/run/run_stats_with_curvature.py --task input_permuted_mnist_stats --learner upgd_fo_global --seed 0 --lr 0.01 --sigma 0.1 --beta_utility 0.9999 --weight_decay 0.01 --network fully_connected_relu_with_hooks --n_samples 1000000 --compute_curvature_every 1 --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 624, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats_with_curvature.py", line 125, in start
+    optimizer = self.learner.optimizer(
+                ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: FirstOrderGlobalUPGD.__init__() got an unexpected keyword argument 'disable_regularization'
+ 
+
+python3 core/run/run_stats.py --task label_permuted_cifar10_stats --learner upgd_fo_global --seed 2 --lr 0.01 --sigma 0.001 --beta_utility 0.999 --weight_decay 0.0 --network fully_connected_relu_with_hooks --n_samples 1000000 --compute_curvature_every 1000000 --save_path logs 
+Traceback (most recent call last):
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats.py", line 200, in <module>
+    run.start()
+  File "/scratch/gautschi/shin283/upgd/core/run/run_stats.py", line 50, in start
+    optimizer = self.learner.optimizer(
+                ^^^^^^^^^^^^^^^^^^^^^^^
+TypeError: FirstOrderGlobalUPGD.__init__() got an unexpected keyword argument 'compute_curvature_every'
+ 
+

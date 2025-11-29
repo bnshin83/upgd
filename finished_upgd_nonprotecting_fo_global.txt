@@ -1,0 +1,1 @@
+python3 core/run/run_stats_with_curvature.py --task label_permuted_mini_imagenet_stats --learner upgd_nonprotecting_fo_global --seed 2 --lr 0.01 --sigma 0.01 --beta_utility 0.999 --weight_decay 0.0001 --network fully_connected_relu_with_hooks --n_samples 1000000 --compute_curvature_every 1 --save_path logs time_elapsed: 67266.71673798561 
