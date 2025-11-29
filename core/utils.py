@@ -20,7 +20,7 @@ from core.learner.rwalk import RWalkLearner
 from core.learner.mas import MASLearner
 from core.learner.synaptic_intelligence import SynapticIntelligenceLearner
 
-from core.learner.weight_upgd import FirstOrderLocalUPGDLearner, SecondOrderLocalUPGDLearner, FirstOrderNonprotectingLocalUPGDLearner, SecondOrderNonprotectingLocalUPGDLearner, FirstOrderGlobalUPGDLearner, SecondOrderGlobalUPGDLearner, FirstOrderNonprotectingGlobalUPGDLearner, SecondOrderNonprotectingGlobalUPGDLearner
+from core.learner.weight_upgd import FirstOrderLocalUPGDLearner, SecondOrderLocalUPGDLearner, FirstOrderNonprotectingLocalUPGDLearner, SecondOrderNonprotectingLocalUPGDLearner, FirstOrderGlobalUPGDLearner, SecondOrderGlobalUPGDLearner, FirstOrderNonprotectingGlobalUPGDLearner, FastFirstOrderNonprotectingGlobalUPGDLearner, SecondOrderNonprotectingGlobalUPGDLearner
 from core.learner.feature_upgd import FeatureFirstOrderNonprotectingLocalUPGDLearner, FeatureFirstOrderLocalUPGDLearner, FeatureFirstOrderGlobalUPGDLearner, FeatureFirstOrderNonprotectingGlobalUPGDLearner, FeatureSecondOrderNonprotectingGlobalUPGDLearner, FeatureSecondOrderGlobalUPGDLearner, FeatureSecondOrderNonprotectingLocalUPGDLearner, FeatureSecondOrderLocalUPGDLearner
 from core.learner.input_aware_upgd import InputAwareFirstOrderGlobalUPGDLearner, InputAwareSecondOrderGlobalUPGDLearner
 
@@ -101,6 +101,7 @@ learners = {
     "upgd_fo_global": FirstOrderGlobalUPGDLearner,
     "upgd_so_global": SecondOrderGlobalUPGDLearner,
     "upgd_nonprotecting_fo_global": FirstOrderNonprotectingGlobalUPGDLearner,
+    "fast_upgd_nonprotecting_fo_global": FastFirstOrderNonprotectingGlobalUPGDLearner,
     "upgd_nonprotecting_so_global": SecondOrderNonprotectingGlobalUPGDLearner,
 
     "feature_upgd_fo_local": FeatureFirstOrderLocalUPGDLearner,

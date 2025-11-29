@@ -19,9 +19,14 @@ class Learner:
         output = self.network(input)
         return output
 
-    def set_task(self, task):
+    def set_task(self, task, jit=False):
         if self.extend:
             self.network = extend(self.network_cls(n_obs=task.n_inputs, n_outputs=task.n_outputs).to(self.device))
         else:
             self.network = self.network_cls(n_obs=task.n_inputs, n_outputs=task.n_outputs).to(self.device)
+        # Does not improve
+        # Sangbin: Just-In-Time compiler (pytorch1: torch.jit, pytorch2: torch.compile) 
+        # self.network = torch.compile(self.network)
+        if jit:
+            self.network = torch.jit.script(self.network)
         self.parameters = self.network.named_parameters()

@@ -1,5 +1,5 @@
 from core.learner.learner import Learner
-from core.optim.weight_upgd.first_order import FirstOrderLocalUPGD, FirstOrderNonprotectingLocalUPGD, FirstOrderGlobalUPGD, FirstOrderNonprotectingGlobalUPGD
+from core.optim.weight_upgd.first_order import FirstOrderLocalUPGD, FirstOrderNonprotectingLocalUPGD, FirstOrderGlobalUPGD, FirstOrderNonprotectingGlobalUPGD, FastFirstOrderNonprotectingGlobalUPGD
 from core.optim.weight_upgd.second_order import SecondOrderLocalUPGD, SecondOrderNonprotectingLocalUPGD, SecondOrderGlobalUPGD, SecondOrderNonprotectingGlobalUPGD
 
 class FirstOrderLocalUPGDLearner(Learner):
@@ -42,6 +42,12 @@ class FirstOrderNonprotectingGlobalUPGDLearner(Learner):
     def __init__(self, network=None, optim_kwargs={}):
         optimizer = FirstOrderNonprotectingGlobalUPGD
         name = "upgd_nonprotecting_fo_global"
+        super().__init__(name, network, optimizer, optim_kwargs)
+
+class FastFirstOrderNonprotectingGlobalUPGDLearner(Learner):
+    def __init__(self, network=None, optim_kwargs={}):
+        optimizer = FastFirstOrderNonprotectingGlobalUPGD
+        name = "fast_upgd_nonprotecting_fo_global"
         super().__init__(name, network, optimizer, optim_kwargs)
 
 class SecondOrderNonprotectingGlobalUPGDLearner(Learner):
