@@ -20,7 +20,17 @@ from core.learner.rwalk import RWalkLearner
 from core.learner.mas import MASLearner
 from core.learner.synaptic_intelligence import SynapticIntelligenceLearner
 
-from core.learner.weight_upgd import FirstOrderLocalUPGDLearner, SecondOrderLocalUPGDLearner, FirstOrderNonprotectingLocalUPGDLearner, SecondOrderNonprotectingLocalUPGDLearner, FirstOrderGlobalUPGDLearner, SecondOrderGlobalUPGDLearner, FirstOrderNonprotectingGlobalUPGDLearner, FastFirstOrderNonprotectingGlobalUPGDLearner, SecondOrderNonprotectingGlobalUPGDLearner
+from core.learner.weight_upgd import (
+    FirstOrderLocalUPGDLearner, FirstOrderNonprotectingLocalUPGDLearner,
+    FirstOrderGlobalUPGDLearner, FirstOrderNonprotectingGlobalUPGDLearner,
+    FirstOrderGlobalUPGDClamped052Learner,
+    UPGDLayerSelectiveFullLearner, UPGDLayerSelectiveOutputOnlyLearner,
+    UPGDLayerSelectiveHiddenOnlyLearner, UPGDLayerSelectiveHiddenAndOutputLearner,
+    UPGDClamped48_52Learner, UPGDClamped44_56Learner, UPGDClamped40_60Learner,
+    SecondOrderLocalUPGDLearner, SecondOrderNonprotectingLocalUPGDLearner,
+    SecondOrderGlobalUPGDLearner, SecondOrderNonprotectingGlobalUPGDLearner,
+    SECOND_ORDER_AVAILABLE
+)
 from core.learner.feature_upgd import FeatureFirstOrderNonprotectingLocalUPGDLearner, FeatureFirstOrderLocalUPGDLearner, FeatureFirstOrderGlobalUPGDLearner, FeatureFirstOrderNonprotectingGlobalUPGDLearner, FeatureSecondOrderNonprotectingGlobalUPGDLearner, FeatureSecondOrderGlobalUPGDLearner, FeatureSecondOrderNonprotectingLocalUPGDLearner, FeatureSecondOrderLocalUPGDLearner
 from core.learner.input_aware_upgd import InputAwareFirstOrderGlobalUPGDLearner, InputAwareSecondOrderGlobalUPGDLearner
 
@@ -99,9 +109,21 @@ learners = {
     "upgd_nonprotecting_fo_local": FirstOrderNonprotectingLocalUPGDLearner,
     "upgd_nonprotecting_so_local": SecondOrderNonprotectingLocalUPGDLearner,
     "upgd_fo_global": FirstOrderGlobalUPGDLearner,
+    "upgd_fo_global_clamped052": FirstOrderGlobalUPGDClamped052Learner,
+
+    # Layer-selective gating
+    "upgd_fo_global_full": UPGDLayerSelectiveFullLearner,
+    "upgd_fo_global_outputonly": UPGDLayerSelectiveOutputOnlyLearner,
+    "upgd_fo_global_hiddenonly": UPGDLayerSelectiveHiddenOnlyLearner,
+    "upgd_fo_global_hiddenandoutput": UPGDLayerSelectiveHiddenAndOutputLearner,
+
+    # Symmetric clamping
+    "upgd_fo_global_clamped_48_52": UPGDClamped48_52Learner,
+    "upgd_fo_global_clamped_44_56": UPGDClamped44_56Learner,
+    "upgd_fo_global_clamped_40_60": UPGDClamped40_60Learner,
+
     "upgd_so_global": SecondOrderGlobalUPGDLearner,
     "upgd_nonprotecting_fo_global": FirstOrderNonprotectingGlobalUPGDLearner,
-    "fast_upgd_nonprotecting_fo_global": FastFirstOrderNonprotectingGlobalUPGDLearner,
     "upgd_nonprotecting_so_global": SecondOrderNonprotectingGlobalUPGDLearner,
 
     "feature_upgd_fo_local": FeatureFirstOrderLocalUPGDLearner,

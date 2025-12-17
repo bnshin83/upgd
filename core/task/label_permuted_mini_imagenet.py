@@ -107,6 +107,8 @@ class LabelPermutedMiniImageNet(Task):
             dataset,
             batch_size=self.batch_size,
             shuffle=True,
+            num_workers=0,  # Set to 0 to avoid multiprocessing issues, but pin_memory can help
+            pin_memory=True if torch.cuda.is_available() else False,
         )
 
     def change_all_lables(self):

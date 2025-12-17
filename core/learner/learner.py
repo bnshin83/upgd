@@ -7,7 +7,10 @@ class Learner:
         self.optim_kwargs = optim_kwargs
         for k, v in optim_kwargs.items():
             if isinstance(v, str):
-                optim_kwargs[k] = float(v)
+                try:
+                    optim_kwargs[k] = float(v)
+                except ValueError:
+                    pass  # Keep non-numeric strings as-is (e.g., gating_mode)
         self.optimizer = optimizer
         self.name = name
         self.extend = extend

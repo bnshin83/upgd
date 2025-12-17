@@ -3,7 +3,14 @@ from torch.nn import functional as F
 import sys
 import os
 sys.path.insert(1, os.getcwd())
-from HesScale.hesscale import HesScale
+
+# HesScale is optional - only needed for second-order methods
+try:
+    from HesScale.hesscale import HesScale
+    HESSCALE_AVAILABLE = True
+except ImportError:
+    HesScale = None
+    HESSCALE_AVAILABLE = False
 
 
 def compute_input_curvature_finite_diff(model, inputs, targets, criterion, h=1e-3, niter=10, temp=1.0):
@@ -599,7 +606,12 @@ class InputAwareSecondOrderGlobalUPGD(torch.optim.Optimizer):
     Input-aware second-order UPGD using HesScale for parameter curvature
     and input curvature for gating protection.
     """
-    method = HesScale()
+    if not HESSCALE_AVAILABLE:
+        # Placeholder when HesScale is not available
+        def __init__(self, *args, **kwargs):
+            raise ImportError("InputAwareSecondOrderGlobalUPGD requires HesScale, which is not compatible with PyTorch 2.x")
+    else:
+        method = HesScale()
     
     def __init__(self, params, lr=1e-5, weight_decay=0.0, beta_utility=0.99, sigma=1.0,
                  curvature_threshold=1.0, lambda_max=1.0, lambda_scale=0.1,

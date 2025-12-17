@@ -135,6 +135,22 @@ class SGD(torch.optim.Optimizer):
             self.raw_util_hist_m0002_p0002_pct = (self.raw_util_hist_m0002_p0002 / total_params) * 100
             self.raw_util_hist_p0002_p001_pct = (self.raw_util_hist_p0002_p001 / total_params) * 100
             self.raw_util_hist_gt_p001_pct = (self.raw_util_hist_gt_p001 / total_params) * 100
+
+            # Store tensor samples for histogram visualization (sample up to 100k values to avoid memory issues)
+            max_samples = 100000
+            if total_params > max_samples:
+                # Randomly sample
+                indices = torch.randperm(total_params, device=scaled_utility_tensor.device)[:max_samples]
+                self._hist_scaled_utility_sample = scaled_utility_tensor[indices].detach().cpu()
+                self._hist_gradient_sample = gradient_tensor[indices].detach().cpu()
+                self._hist_weight_sample = weight_tensor[indices].detach().cpu()
+                self._hist_raw_utility_sample = raw_utility_tensor[indices].detach().cpu()
+            else:
+                # Store all values
+                self._hist_scaled_utility_sample = scaled_utility_tensor.detach().cpu()
+                self._hist_gradient_sample = gradient_tensor.detach().cpu()
+                self._hist_weight_sample = weight_tensor.detach().cpu()
+                self._hist_raw_utility_sample = raw_utility_tensor.detach().cpu()
         else:
             self.utility_L1 = 0.0
             self.utility_L2 = 0.0
@@ -193,6 +209,12 @@ class SGD(torch.optim.Optimizer):
             self.raw_util_hist_m0002_p0002_pct = 0.0
             self.raw_util_hist_p0002_p001_pct = 0.0
             self.raw_util_hist_gt_p001_pct = 0.0
+            # Clear histogram tensor samples
+            if hasattr(self, '_hist_scaled_utility_sample'):
+                delattr(self, '_hist_scaled_utility_sample')
+                delattr(self, '_hist_gradient_sample')
+                delattr(self, '_hist_weight_sample')
+                delattr(self, '_hist_raw_utility_sample')
 
         # Store global max utility for logging
         self.global_max_util = global_max_util.item() if isinstance(global_max_util, torch.Tensor) else global_max_util
@@ -276,3 +298,15 @@ class SGD(torch.optim.Optimizer):
             stats['raw_utility/hist_gt_p001_pct'] = self.raw_util_hist_gt_p001_pct
 
         return stats
+
+    def get_histogram_tensors(self):
+        """Return tensor samples for histogram visualization in WandB."""
+        if not hasattr(self, '_hist_scaled_utility_sample'):
+            return {}
+
+        return {
+            'histograms/scaled_utility': self._hist_scaled_utility_sample,
+            'histograms/gradient': self._hist_gradient_sample,
+            'histograms/weight': self._hist_weight_sample,
+            'histograms/raw_utility': self._hist_raw_utility_sample,
+        }

@@ -1,6 +1,17 @@
 from core.learner.learner import Learner
 from core.optim.feature_upgd.first_order import FirstOrderNonprotectingLocalUPGD, FirstOrderLocalUPGD, FirstOrderNonprotectingGlobalUPGD, FirstOrderGlobalUPGD
-from core.optim.feature_upgd.second_order import SecondOrderNonprotectingLocalUPGD, SecondOrderLocalUPGD, SecondOrderNonprotectingGlobalUPGD, SecondOrderGlobalUPGD
+
+# Second-order imports require HesScale which has compatibility issues with PyTorch 2.x
+try:
+    from core.optim.feature_upgd.second_order import SecondOrderNonprotectingLocalUPGD, SecondOrderLocalUPGD, SecondOrderNonprotectingGlobalUPGD, SecondOrderGlobalUPGD
+    FEATURE_SECOND_ORDER_AVAILABLE = True
+except ImportError as e:
+    print(f"Warning: Feature second-order UPGD not available: {e}")
+    SecondOrderNonprotectingLocalUPGD = None
+    SecondOrderLocalUPGD = None
+    SecondOrderNonprotectingGlobalUPGD = None
+    SecondOrderGlobalUPGD = None
+    FEATURE_SECOND_ORDER_AVAILABLE = False
 
 class FeatureFirstOrderLocalUPGDLearner(Learner):
     def __init__(self, network=None, optim_kwargs={}):

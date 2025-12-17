@@ -3,8 +3,21 @@ from core.utils import tasks, networks, learners, criterions
 from core.logger import Logger
 from backpack import backpack, extend
 sys.path.insert(1, os.getcwd())
-from HesScale.hesscale import HesScale
-from core.network.gate import GateLayer, GateLayerGrad
+
+# HesScale is optional - only needed for second-order methods
+try:
+    from HesScale.hesscale import HesScale
+    HESSCALE_AVAILABLE = True
+except ImportError:
+    HesScale = None
+    HESSCALE_AVAILABLE = False
+
+# GateLayer imports may also depend on HesScale
+try:
+    from core.network.gate import GateLayer, GateLayerGrad
+except ImportError:
+    GateLayer = None
+    GateLayerGrad = None
 from core.optim.weight_upgd.input_aware import compute_input_curvature_finite_diff
 import signal
 import traceback
@@ -57,6 +70,7 @@ class RunStatsWithCurvature:
             try:
                 wandb.init(
                     project=os.environ.get('WANDB_PROJECT', 'upgd-experiments'),
+                    entity=os.environ.get('WANDB_ENTITY'),  # Set entity to avoid team conflict
                     name=os.environ.get('WANDB_RUN_NAME', f'{task}_{learner}_{seed}'),
                     config={
                         'task': task,
@@ -69,7 +83,10 @@ class RunStatsWithCurvature:
                         'disable_regularization': disable_regularization,
                         'disable_gating': disable_gating,
                         **kwargs
-                    }
+                    },
+                    settings=wandb.Settings(
+                        console='off',         # Reduce console output
+                    )
                 )
                 self.wandb_enabled = True
                 print(f"WandB initialized: {wandb.run.name}")
@@ -131,7 +148,40 @@ class RunStatsWithCurvature:
         except Exception as e:
             print(f"Warning: could not initialize log path early: {e}")
 
-        # Step-level tracking for ALL steps
+        # Step-level tracking for ALL steps (saved to JSON, never reset)
+        all_losses_per_step = []
+        all_plasticity_per_step = []
+        all_n_dead_units_per_step = []
+        all_weight_rank_per_step = []
+        all_weight_l2_per_step = []
+        all_weight_l1_per_step = []
+        all_grad_l2_per_step = []
+        all_grad_l1_per_step = []
+        all_grad_l0_per_step = []
+
+        # Utility histogram tracking (9 bins) - logged every 10 steps
+        all_utility_hist_per_step = {
+            'steps': [],  # Which steps have utility data
+            'hist_0_20_pct': [],
+            'hist_20_40_pct': [],
+            'hist_40_44_pct': [],
+            'hist_44_48_pct': [],
+            'hist_48_52_pct': [],
+            'hist_52_56_pct': [],
+            'hist_56_60_pct': [],
+            'hist_60_80_pct': [],
+            'hist_80_100_pct': [],
+            'global_max': [],
+            'total_params': None,  # Will be set once from optimizer
+        }
+        # Per-layer utility histograms
+        all_layer_utility_hist_per_step = {
+            'linear_1': {'steps': [], 'hist_48_52_pct': [], 'hist_52_56_pct': []},
+            'linear_2': {'steps': [], 'hist_48_52_pct': [], 'hist_52_56_pct': []},
+            'linear_3': {'steps': [], 'hist_48_52_pct': [], 'hist_52_56_pct': []},
+        }
+
+        # Current task step tracking (reset after each task for per-task averaging)
         losses_per_step = []
         plasticity_per_step = []
         n_dead_units_per_step = []
@@ -154,9 +204,15 @@ class RunStatsWithCurvature:
             lambda_values_per_step = []
 
         if self.task.criterion == 'cross_entropy':
+            all_accuracy_per_step = []
             accuracy_per_step = []
 
+        print(f"Starting training for {self.n_samples} samples...", flush=True)
         for i in range(self.n_samples):
+            # Progress logging (every 1000 steps)
+            if i % 1000 == 0:
+                print(f"Step {i}/{self.n_samples} ({100*i/self.n_samples:.1f}%)", flush=True)
+            
             input, target = next(self.task)
             input, target = input.to(self.device), target.to(self.device)
             optimizer.zero_grad()
@@ -260,24 +316,31 @@ class RunStatsWithCurvature:
             else:
                 loss.backward()
             optimizer.step()
-            losses_per_step.append(loss.item())
-            
+            loss_val = loss.item()
+            losses_per_step.append(loss_val)
+            all_losses_per_step.append(loss_val)
+
             # Compute accuracy immediately after getting output
             current_accuracy = None
             if self.task.criterion == 'cross_entropy':
                 current_accuracy = (output.argmax(dim=1) == target).float().mean().item()
                 accuracy_per_step.append(current_accuracy)
+                all_accuracy_per_step.append(current_accuracy)
 
             # compute some statistics after each task change
             with torch.no_grad():
                 output_new = self.learner.predict(input)
                 loss_after = criterion(output_new, target)
                 loss_before = torch.clamp(loss, min=1e-8)
-                plasticity_per_step.append(torch.clamp((1-loss_after/loss_before), min=0.0, max=1.0).item())
+                plasticity_val = torch.clamp((1-loss_after/loss_before), min=0.0, max=1.0).item()
+                plasticity_per_step.append(plasticity_val)
+                all_plasticity_per_step.append(plasticity_val)
             n_dead_units = 0
             for _, value in self.learner.network.activations.items():
                 n_dead_units += value
-            n_dead_units_per_step.append(n_dead_units / self.learner.network.n_units)
+            dead_units_val = n_dead_units / self.learner.network.n_units
+            n_dead_units_per_step.append(dead_units_val)
+            all_n_dead_units_per_step.append(dead_units_val)
 
             sample_weight_rank = 0.0
             sample_max_rank = 0.0
@@ -291,7 +354,7 @@ class RunStatsWithCurvature:
             for name, param in self.learner.network.named_parameters():
                 if 'weight' in name:
                     if 'conv' in name:
-                        sample_weight_rank += torch.torch.linalg.matrix_rank(param.data).float().mean()
+                        sample_weight_rank += torch.linalg.matrix_rank(param.data).float().mean()
                         sample_max_rank += torch.min(torch.tensor(param.data.shape)[-2:])
                     else:
                         sample_weight_rank += torch.linalg.matrix_rank(param.data)
@@ -305,12 +368,26 @@ class RunStatsWithCurvature:
                     sample_grad_l0 += torch.norm(param.grad.data, p=0)
                     sample_n_weights += torch.numel(param.data)
 
-            weight_l2_per_step.append(sample_weight_l2.sqrt().item())
-            weight_l1_per_step.append(sample_weight_l1.item())
-            grad_l2_per_step.append(sample_grad_l2.sqrt().item())
-            grad_l1_per_step.append(sample_grad_l1.item())
-            grad_l0_per_step.append(sample_grad_l0.item()/sample_n_weights)
-            weight_rank_per_step.append(sample_weight_rank.item() / sample_max_rank.item())
+            weight_l2_val = sample_weight_l2.sqrt().item()
+            weight_l1_val = sample_weight_l1.item()
+            grad_l2_val = sample_grad_l2.sqrt().item()
+            grad_l1_val = sample_grad_l1.item()
+            grad_l0_val = sample_grad_l0.item()/sample_n_weights
+            weight_rank_val = sample_weight_rank.item() / sample_max_rank.item()
+
+            weight_l2_per_step.append(weight_l2_val)
+            weight_l1_per_step.append(weight_l1_val)
+            grad_l2_per_step.append(grad_l2_val)
+            grad_l1_per_step.append(grad_l1_val)
+            grad_l0_per_step.append(grad_l0_val)
+            weight_rank_per_step.append(weight_rank_val)
+
+            all_weight_l2_per_step.append(weight_l2_val)
+            all_weight_l1_per_step.append(weight_l1_val)
+            all_grad_l2_per_step.append(grad_l2_val)
+            all_grad_l1_per_step.append(grad_l1_val)
+            all_grad_l0_per_step.append(grad_l0_val)
+            all_weight_rank_per_step.append(weight_rank_val)
             
             # Incremental JSON updates for long runs
             if i % 1000 == 0 and i > 0:
@@ -387,8 +464,56 @@ class RunStatsWithCurvature:
                 if hasattr(optimizer, 'get_utility_stats'):
                     utility_stats = optimizer.get_utility_stats()
                     step_metrics.update(utility_stats)
+
+                    # Save utility histogram data to local tracking (for JSON export)
+                    if 'utility/hist_48_52_pct' in utility_stats:
+                        all_utility_hist_per_step['steps'].append(i)
+                        all_utility_hist_per_step['hist_0_20_pct'].append(utility_stats.get('utility/hist_0_20_pct', 0))
+                        all_utility_hist_per_step['hist_20_40_pct'].append(utility_stats.get('utility/hist_20_40_pct', 0))
+                        all_utility_hist_per_step['hist_40_44_pct'].append(utility_stats.get('utility/hist_40_44_pct', 0))
+                        all_utility_hist_per_step['hist_44_48_pct'].append(utility_stats.get('utility/hist_44_48_pct', 0))
+                        all_utility_hist_per_step['hist_48_52_pct'].append(utility_stats.get('utility/hist_48_52_pct', 0))
+                        all_utility_hist_per_step['hist_52_56_pct'].append(utility_stats.get('utility/hist_52_56_pct', 0))
+                        all_utility_hist_per_step['hist_56_60_pct'].append(utility_stats.get('utility/hist_56_60_pct', 0))
+                        all_utility_hist_per_step['hist_60_80_pct'].append(utility_stats.get('utility/hist_60_80_pct', 0))
+                        all_utility_hist_per_step['hist_80_100_pct'].append(utility_stats.get('utility/hist_80_100_pct', 0))
+                        all_utility_hist_per_step['global_max'].append(utility_stats.get('utility/global_max', 0))
+                        # Save total_params (only need to set once, it's constant)
+                        if all_utility_hist_per_step['total_params'] is None:
+                            all_utility_hist_per_step['total_params'] = utility_stats.get('utility/total_params', 0)
+
+                        # Per-layer utility histograms
+                        for layer in ['linear_1', 'linear_2', 'linear_3']:
+                            key_48_52 = f'layer/{layer}/hist_48_52_pct'
+                            key_52_56 = f'layer/{layer}/hist_52_56_pct'
+                            if key_48_52 in utility_stats:
+                                all_layer_utility_hist_per_step[layer]['steps'].append(i)
+                                all_layer_utility_hist_per_step[layer]['hist_48_52_pct'].append(utility_stats[key_48_52])
+                                all_layer_utility_hist_per_step[layer]['hist_52_56_pct'].append(utility_stats.get(key_52_56, 0))
                 
-                wandb.log(step_metrics, step=i)
+                # Log histograms every 100 steps using wandb.Histogram() for proper visualization
+                if i % 100 == 0 and hasattr(optimizer, 'get_histogram_tensors'):
+                    histogram_tensors = optimizer.get_histogram_tensors()
+                    if histogram_tensors:
+                        # Convert to wandb.Histogram for proper visualization
+                        histogram_metrics = {}
+                        for key, tensor in histogram_tensors.items():
+                            if tensor is not None and tensor.numel() > 0:
+                                histogram_metrics[key] = wandb.Histogram(tensor.numpy())
+                        if histogram_metrics:
+                            step_metrics.update(histogram_metrics)
+                            if i % 1000 == 0:
+                                print(f"Step {i}: Logged {len(histogram_metrics)} histograms: {list(histogram_metrics.keys())}")
+                
+                wandb.log(step_metrics, step=i, commit=True)  # commit=True forces immediate sync
+                
+                # Force sync every 1000 steps to ensure data appears in dashboard
+                if i % 1000 == 0 and self.wandb_enabled:
+                    try:
+                        wandb.run.summary.update({'last_synced_step': i})
+                        wandb.run.summary.update({'progress_percent': 100.0 * i / self.n_samples})
+                    except:
+                        pass
 
             if i % self.task.change_freq == 0:
                 losses_per_task.append(sum(losses_per_step) / len(losses_per_step))
@@ -472,8 +597,21 @@ class RunStatsWithCurvature:
                         curvature_min_per_task.append(0.0)
                         curvature_std_per_task.append(0.0)
 
-                # Don't reset step arrays - keep accumulating ALL steps
-                # Reset only task-level curvature tracking
+                # Reset per-step arrays after each task (matches original UPGD behavior)
+                # This ensures per-task metrics are window averages, not cumulative
+                losses_per_step = []
+                if self.task.criterion == 'cross_entropy':
+                    accuracy_per_step = []
+                plasticity_per_step = []
+                n_dead_units_per_step = []
+                weight_rank_per_step = []
+                weight_l2_per_step = []
+                weight_l1_per_step = []
+                grad_l2_per_step = []
+                grad_l1_per_step = []
+                grad_l0_per_step = []
+
+                # Reset task-level curvature tracking
                 if self.is_input_aware:
                     current_task_curvatures = []  # Reset for next task
 
@@ -491,15 +629,15 @@ class RunStatsWithCurvature:
             'grad_l1_per_task': grad_l1_per_task,
             
             # Step-level data (ALL steps)
-            'losses_per_step': losses_per_step,
-            'plasticity_per_step': plasticity_per_step,
-            'n_dead_units_per_step': n_dead_units_per_step,
-            'weight_rank_per_step': weight_rank_per_step,
-            'weight_l2_per_step': weight_l2_per_step,
-            'weight_l1_per_step': weight_l1_per_step,
-            'grad_l2_per_step': grad_l2_per_step,
-            'grad_l0_per_step': grad_l0_per_step,
-            'grad_l1_per_step': grad_l1_per_step,
+            'losses_per_step': all_losses_per_step,
+            'plasticity_per_step': all_plasticity_per_step,
+            'n_dead_units_per_step': all_n_dead_units_per_step,
+            'weight_rank_per_step': all_weight_rank_per_step,
+            'weight_l2_per_step': all_weight_l2_per_step,
+            'weight_l1_per_step': all_weight_l1_per_step,
+            'grad_l2_per_step': all_grad_l2_per_step,
+            'grad_l0_per_step': all_grad_l0_per_step,
+            'grad_l1_per_step': all_grad_l1_per_step,
             
             # Metadata
             'task': self.task_name, 
@@ -516,7 +654,7 @@ class RunStatsWithCurvature:
         # Add accuracy for classification tasks
         if self.task.criterion == 'cross_entropy':
             log_data['accuracies'] = accuracy_per_task
-            log_data['accuracy_per_step'] = accuracy_per_step
+            log_data['accuracy_per_step'] = all_accuracy_per_step
             
         # Add curvature data for input-aware learners (task-level), and include step-level for all
         if self.is_input_aware:
@@ -542,36 +680,41 @@ class RunStatsWithCurvature:
                 'lambda_values_per_step': lambda_values_per_step,
                 'compute_curvature_every': self.compute_curvature_every,
             })
-            
+
+        # Add utility histogram data (9 bins) if collected
+        if all_utility_hist_per_step['steps']:
+            log_data['utility_histogram_per_step'] = all_utility_hist_per_step
+            log_data['layer_utility_histogram_per_step'] = all_layer_utility_hist_per_step
+
         # Log comprehensive final summary to wandb
         if self.wandb_enabled:
             final_summary = {
                 # Training overview
-                'summary/final_loss': losses_per_step[-1] if losses_per_step else 0.0,
-                'summary/avg_loss': sum(losses_per_step) / len(losses_per_step) if losses_per_step else 0.0,
-                'summary/min_loss': min(losses_per_step) if losses_per_step else 0.0,
-                'summary/total_steps': len(losses_per_step),
+                'summary/final_loss': all_losses_per_step[-1] if all_losses_per_step else 0.0,
+                'summary/avg_loss': sum(all_losses_per_step) / len(all_losses_per_step) if all_losses_per_step else 0.0,
+                'summary/min_loss': min(all_losses_per_step) if all_losses_per_step else 0.0,
+                'summary/total_steps': len(all_losses_per_step),
                 'summary/total_tasks': len(losses_per_task),
-                
+
                 # Plasticity summary
-                'summary/final_plasticity': plasticity_per_step[-1] if plasticity_per_step else 0.0,
-                'summary/avg_plasticity': sum(plasticity_per_step) / len(plasticity_per_step) if plasticity_per_step else 0.0,
-                'summary/min_plasticity': min(plasticity_per_step) if plasticity_per_step else 0.0,
-                
+                'summary/final_plasticity': all_plasticity_per_step[-1] if all_plasticity_per_step else 0.0,
+                'summary/avg_plasticity': sum(all_plasticity_per_step) / len(all_plasticity_per_step) if all_plasticity_per_step else 0.0,
+                'summary/min_plasticity': min(all_plasticity_per_step) if all_plasticity_per_step else 0.0,
+
                 # Network health summary
-                'summary/final_dead_units': n_dead_units_per_step[-1] if n_dead_units_per_step else 0.0,
-                'summary/avg_dead_units': sum(n_dead_units_per_step) / len(n_dead_units_per_step) if n_dead_units_per_step else 0.0,
-                'summary/max_dead_units': max(n_dead_units_per_step) if n_dead_units_per_step else 0.0,
-                
+                'summary/final_dead_units': all_n_dead_units_per_step[-1] if all_n_dead_units_per_step else 0.0,
+                'summary/avg_dead_units': sum(all_n_dead_units_per_step) / len(all_n_dead_units_per_step) if all_n_dead_units_per_step else 0.0,
+                'summary/max_dead_units': max(all_n_dead_units_per_step) if all_n_dead_units_per_step else 0.0,
+
                 # Weight statistics summary
-                'summary/final_weight_l2': weight_l2_per_step[-1] if weight_l2_per_step else 0.0,
-                'summary/avg_weight_l2': sum(weight_l2_per_step) / len(weight_l2_per_step) if weight_l2_per_step else 0.0,
-                'summary/final_weight_rank': weight_rank_per_step[-1] if weight_rank_per_step else 0.0,
-                
-                # Gradient statistics summary  
-                'summary/final_grad_l2': grad_l2_per_step[-1] if grad_l2_per_step else 0.0,
-                'summary/avg_grad_l2': sum(grad_l2_per_step) / len(grad_l2_per_step) if grad_l2_per_step else 0.0,
-                'summary/max_grad_l2': max(grad_l2_per_step) if grad_l2_per_step else 0.0,
+                'summary/final_weight_l2': all_weight_l2_per_step[-1] if all_weight_l2_per_step else 0.0,
+                'summary/avg_weight_l2': sum(all_weight_l2_per_step) / len(all_weight_l2_per_step) if all_weight_l2_per_step else 0.0,
+                'summary/final_weight_rank': all_weight_rank_per_step[-1] if all_weight_rank_per_step else 0.0,
+
+                # Gradient statistics summary
+                'summary/final_grad_l2': all_grad_l2_per_step[-1] if all_grad_l2_per_step else 0.0,
+                'summary/avg_grad_l2': sum(all_grad_l2_per_step) / len(all_grad_l2_per_step) if all_grad_l2_per_step else 0.0,
+                'summary/max_grad_l2': max(all_grad_l2_per_step) if all_grad_l2_per_step else 0.0,
             }
             
             # Add curvature summary for all learners (standard = analysis-only)
@@ -587,12 +730,12 @@ class RunStatsWithCurvature:
                 })
             
             # Add accuracy summary for classification tasks
-            if self.task.criterion == 'cross_entropy' and accuracy_per_step:
+            if self.task.criterion == 'cross_entropy' and all_accuracy_per_step:
                 final_summary.update({
-                    'summary/final_accuracy': accuracy_per_step[-1],
-                    'summary/avg_accuracy': sum(accuracy_per_step) / len(accuracy_per_step),
-                    'summary/max_accuracy': max(accuracy_per_step),
-                    'summary/min_accuracy': min(accuracy_per_step),
+                    'summary/final_accuracy': all_accuracy_per_step[-1],
+                    'summary/avg_accuracy': sum(all_accuracy_per_step) / len(all_accuracy_per_step),
+                    'summary/max_accuracy': max(all_accuracy_per_step),
+                    'summary/min_accuracy': min(all_accuracy_per_step),
                 })
             
             wandb.log(final_summary)

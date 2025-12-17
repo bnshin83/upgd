@@ -26,7 +26,7 @@ from PIL import Image
 from tqdm import tqdm
 
 # Set Hugging Face cache to scratch (not home folder)
-SCRATCH_CACHE = "/scratch/gilbreth/shin283/.cache/huggingface"
+SCRATCH_CACHE = "/scratch/gautschi/shin283/.cache/huggingface"
 os.makedirs(SCRATCH_CACHE, exist_ok=True)
 os.environ["HF_HOME"] = SCRATCH_CACHE
 os.environ["HF_DATASETS_CACHE"] = os.path.join(SCRATCH_CACHE, "datasets")
