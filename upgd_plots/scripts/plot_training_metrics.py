@@ -46,7 +46,9 @@ DATASET_CONFIGS = {
         'logs_subdir': 'label_permuted_mini_imagenet_stats',
         'experiments': {
             'S&P': {
-                'path': 'sgd/fully_connected_relu_with_hooks/lr_0.01_sigma_0.01_beta_utility_0.9_weight_decay_0.001_n_samples_1000000',
+                # Baseline available in this workspace (perturbed SGD).
+                # Note: differs slightly from optimizer_best_sets.csv for mini-ImageNet.
+                'path': 'sgd/fully_connected_relu_with_hooks/lr_0.005_sigma_0.01_beta_utility_0.9_weight_decay_0.002_n_samples_1000000',
                 'color': '#7f7f7f',
                 'linestyle': '--',
             },
@@ -56,17 +58,17 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Output Only)': {
-                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_output_only_n_samples_1000000',
                 'color': '#2ca02c',
                 'linestyle': '-',
             },
             'UPGD (Hidden Only)': {
-                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_only_n_samples_1000000',
                 'color': '#ff7f0e',
                 'linestyle': '-',
             },
             'UPGD (Hidden+Output)': {
-                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_and_output_n_samples_1000000',
                 'color': '#9467bd',
                 'linestyle': '-',
             },
@@ -76,26 +78,32 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.48-0.52)': {
-                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
                 'color': '#8c564b',
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.44-0.56)': {
-                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
                 'color': '#e377c2',
                 'linestyle': '-',
             },
         }
     },
     # =========================================================================
-    # Input-MNIST: S&P (lr=0.001, σ=0.1, λ=0.01), UPGD (lr=0.01, σ=0.1, β=0.9999, λ=0.01)
+    # Input-MNIST: permutation changes every 5000 steps in codebase.
+    # We therefore aggregate per-task metrics over 5000-step windows (200 tasks over 1M steps).
+    #
+    # Note: Some older runs used different hyperparameters than optimizer_best_sets.csv.
     # =========================================================================
     'input_mnist': {
         'display_name': 'Input-Permuted MNIST',
         'logs_subdir': 'input_permuted_mnist_stats',
+        'steps_per_task': 5000,
         'experiments': {
             'S&P': {
-                'path': 'sgd/fully_connected_relu_with_hooks/lr_0.001_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+                # Use the available perturbed-SGD baseline run in this workspace.
+                # (This corresponds to SGD with Gaussian noise + weight decay; see core/optim/sgd.py.)
+                'path': 'sgd/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_weight_decay_0.01_beta_utility_0.9999_n_samples_1000000',
                 'color': '#7f7f7f',
                 'linestyle': '--',
             },
@@ -105,17 +113,17 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Output Only)': {
-                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_gating_mode_output_only_n_samples_1000000',
                 'color': '#2ca02c',
                 'linestyle': '-',
             },
             'UPGD (Hidden Only)': {
-                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_gating_mode_hidden_only_n_samples_1000000',
                 'color': '#ff7f0e',
                 'linestyle': '-',
             },
             'UPGD (Hidden+Output)': {
-                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_gating_mode_hidden_and_output_n_samples_1000000',
                 'color': '#9467bd',
                 'linestyle': '-',
             },
@@ -125,12 +133,12 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.48-0.52)': {
-                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
                 'color': '#8c564b',
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.44-0.56)': {
-                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
                 'color': '#e377c2',
                 'linestyle': '-',
             },
@@ -154,17 +162,17 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Output Only)': {
-                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_output_only_n_samples_1000000',
                 'color': '#2ca02c',
                 'linestyle': '-',
             },
             'UPGD (Hidden Only)': {
-                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_only_n_samples_1000000',
                 'color': '#ff7f0e',
                 'linestyle': '-',
             },
             'UPGD (Hidden+Output)': {
-                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_and_output_n_samples_1000000',
                 'color': '#9467bd',
                 'linestyle': '-',
             },
@@ -174,12 +182,12 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.48-0.52)': {
-                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
                 'color': '#8c564b',
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.44-0.56)': {
-                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
                 'color': '#e377c2',
                 'linestyle': '-',
             },
@@ -203,17 +211,17 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Output Only)': {
-                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_gating_mode_output_only_n_samples_1000000',
                 'color': '#2ca02c',
                 'linestyle': '-',
             },
             'UPGD (Hidden Only)': {
-                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_gating_mode_hidden_only_n_samples_1000000',
                 'color': '#ff7f0e',
                 'linestyle': '-',
             },
             'UPGD (Hidden+Output)': {
-                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_gating_mode_hidden_and_output_n_samples_1000000',
                 'color': '#9467bd',
                 'linestyle': '-',
             },
@@ -223,12 +231,12 @@ DATASET_CONFIGS = {
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.48-0.52)': {
-                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
                 'color': '#8c564b',
                 'linestyle': '-',
             },
             'UPGD (Clamped 0.44-0.56)': {
-                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_n_samples_1000000',
+                'path': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
                 'color': '#e377c2',
                 'linestyle': '-',
             },
@@ -245,7 +253,7 @@ DISPLAY_NAME = None
 
 def set_dataset(dataset):
     """Set global variables for the specified dataset."""
-    global LOGS_DIR, PLOT_DIR, EXPERIMENTS, DISPLAY_NAME
+    global LOGS_DIR, PLOT_DIR, EXPERIMENTS, DISPLAY_NAME, STEPS_PER_TASK
 
     if dataset not in DATASET_CONFIGS:
         print(f"Unknown dataset: {dataset}")
@@ -257,6 +265,7 @@ def set_dataset(dataset):
     PLOT_DIR = PLOT_BASE_DIR / dataset
     EXPERIMENTS = config['experiments']
     DISPLAY_NAME = config['display_name']
+    STEPS_PER_TASK = int(config.get('steps_per_task', 2500))
 
     PLOT_DIR.mkdir(parents=True, exist_ok=True)
 
@@ -323,9 +332,10 @@ def plot_metric_comparison(metric_key: str, ylabel: str, title: str,
         mean_metric = np.mean(all_metrics, axis=0)
         std_metric = np.std(all_metrics, axis=0)
 
-        # Convert per-step (1M points) to per-task window averages (400 tasks)
-        # Each task = 2500 steps, matching original UPGD behavior
-        steps_per_task = 2500
+        # Convert per-step (1M points) to per-task window averages.
+        # For label-permuted tasks this matches the label permutation frequency (2500).
+        # For input-permuted MNIST we use 5000, matching the task's change_freq.
+        steps_per_task = STEPS_PER_TASK
         n_tasks = len(mean_metric) // steps_per_task
 
         per_task_avg = []
@@ -421,7 +431,7 @@ def main():
 
     # Compute per-task window averages from per-step data (matching original UPGD)
     # This converts 1M per-step points to 400 per-task window averages (2500 steps each)
-    print("\nComputing per-task window averages (2500 steps per task)...")
+    print(f"\nComputing per-task window averages ({STEPS_PER_TASK} steps per task)...")
 
     # 1. Accuracy comparison
     print("\n[1/7] Plotting Accuracy...")

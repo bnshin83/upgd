@@ -14,7 +14,7 @@ from functools import partial
 def signal_handler(msg, signal, frame):
     print('Exit signal: ', signal)
     cmd, learner = msg
-    with open(f'timeout_{learner}.txt', 'a') as f:
+    with open(f'slurm_status_logs/timeout_{learner}.txt', 'a') as f:
         f.write(f"{cmd} \n")
     exit(0)
 
@@ -96,11 +96,11 @@ if __name__ == "__main__":
     current_time = time.time()
     try:
         run.start()
-        with open(f"finished_{args['learner']}.txt", "a") as f:
+        with open(f"slurm_status_logs/finished_{args['learner']}.txt", "a") as f:
             f.write(f"{cmd} time_elapsed: {time.time()-current_time} \n")
     except Exception as e:
-        with open(f"failed_{args['learner']}.txt", "a") as f:
+        with open(f"slurm_status_logs/failed_{args['learner']}.txt", "a") as f:
             f.write(f"{cmd} \n")
-        with open(f"failed_{args['learner']}_msgs.txt", "a") as f:
+        with open(f"slurm_status_logs/failed_{args['learner']}_msgs.txt", "a") as f:
             f.write(f"{cmd} \n")
             f.write(f"{traceback.format_exc()} \n\n")
