@@ -13,12 +13,27 @@ class FirstOrderGlobalUPGDLayerSelective(torch.optim.Optimizer):
             - 'output_only': Apply gating only to output layer (linear_3)
             - 'hidden_only': Apply gating only to hidden layers (linear_1, linear_2)
             - 'hidden_and_output': Apply gating to hidden + output (linear_1, linear_2, linear_3)
+            - 'output_frozen': Freeze output layer completely, hidden layers get non_gated_scale
+        non_gated_scale: Scaling factor for non-gated layers (default 0.5).
+            - 0.0: Freeze non-gated layers completely
+            - 0.27: Match max protection level (1 - sigmoid(1) ≈ 0.27)
+            - 0.5: Neutral utility level (1 - sigmoid(0) = 0.5) [default]
+            - 0.73: Match min protection level (sigmoid(1) ≈ 0.73)
+            - 1.0: Full SGD updates (no scaling)
+        freeze_high_utility: If True, freeze parameters where scaled_utility >= freeze_threshold
+        freeze_threshold: Threshold for freezing high-utility params (default 0.52)
     """
 
-    def __init__(self, params, lr=1e-5, weight_decay=0.0, beta_utility=0.0, sigma=1.0, gating_mode='full'):
+    def __init__(self, params, lr=1e-5, weight_decay=0.0, beta_utility=0.0, sigma=1.0,
+                 gating_mode='full', non_gated_scale=0.5, freeze_high_utility=False, freeze_threshold=0.52):
         names, params = zip(*params)
+        if not (0.0 <= float(non_gated_scale) <= 1.0):
+            raise ValueError(f"non_gated_scale must be in [0, 1], got {non_gated_scale}")
+        if not (0.0 <= float(freeze_threshold) <= 1.0):
+            raise ValueError(f"freeze_threshold must be in [0, 1], got {freeze_threshold}")
         defaults = dict(lr=lr, weight_decay=weight_decay, beta_utility=beta_utility, sigma=sigma,
-                       names=names, gating_mode=gating_mode)
+                       names=names, gating_mode=gating_mode, non_gated_scale=float(non_gated_scale),
+                       freeze_high_utility=freeze_high_utility, freeze_threshold=float(freeze_threshold))
         super(FirstOrderGlobalUPGDLayerSelective, self).__init__(params, defaults)
 
     def _should_apply_gating(self, layer_name, gating_mode):
@@ -31,8 +46,16 @@ class FirstOrderGlobalUPGDLayerSelective(torch.optim.Optimizer):
             return 'linear_1' in layer_name or 'linear_2' in layer_name
         elif gating_mode == 'hidden_and_output':
             return 'linear_1' in layer_name or 'linear_2' in layer_name or 'linear_3' in layer_name
+        elif gating_mode == 'output_frozen':
+            return False  # No gating for any layer; output frozen, hidden use non_gated_scale
         else:
             raise ValueError(f"Unknown gating_mode: {gating_mode}")
+
+    def _should_freeze(self, layer_name, gating_mode):
+        """Determine if this layer should be completely frozen (no updates)."""
+        if gating_mode == 'output_frozen':
+            return 'linear_3' in layer_name
+        return False
 
     def step(self):
         # First pass: compute global max utility (needed for all modes)
@@ -64,6 +87,7 @@ class FirstOrderGlobalUPGDLayerSelective(torch.optim.Optimizer):
         all_raw_utilities = []
 
         layer_utilities = {}
+        layer_raw_utilities = {}
         layer_gradients = {}
         layer_weights = {}
         layer_gating_applied = {}  # Track which layers got gating
@@ -78,39 +102,62 @@ class FirstOrderGlobalUPGDLayerSelective(torch.optim.Optimizer):
                 state = self.state[p]
                 bias_correction = 1 - group["beta_utility"] ** state["step"]
                 noise = torch.randn_like(p.grad) * group["sigma"]
-                scaled_utility = torch.sigmoid_((state["avg_utility"] / bias_correction) / global_max_util)
+                raw_utility = (state["avg_utility"] / bias_correction)
+                scaled_utility = torch.sigmoid_(raw_utility / global_max_util)
 
                 # Collect for global statistics
                 all_scaled_utilities.append(scaled_utility.flatten())
                 all_gradients.append(p.grad.flatten())
                 all_weights.append(p.data.flatten())
-                all_raw_utilities.append((state["avg_utility"] / bias_correction).flatten())
+                all_raw_utilities.append(raw_utility.flatten())
 
                 # Collect for per-layer statistics
                 layer_name = name.split('.')[0] if '.' in name else name
                 if layer_name not in layer_utilities:
                     layer_utilities[layer_name] = []
+                    layer_raw_utilities[layer_name] = []
                     layer_gradients[layer_name] = []
                     layer_weights[layer_name] = []
                     layer_gating_applied[layer_name] = self._should_apply_gating(layer_name, gating_mode)
 
                 layer_utilities[layer_name].append(scaled_utility.flatten())
+                layer_raw_utilities[layer_name].append(raw_utility.flatten())
                 layer_gradients[layer_name].append(p.grad.flatten())
                 layer_weights[layer_name].append(p.data.flatten())
 
                 # Apply gating selectively
-                if self._should_apply_gating(layer_name, gating_mode):
+                if self._should_freeze(layer_name, gating_mode):
+                    # Completely frozen layer - no updates at all
+                    pass
+                elif self._should_apply_gating(layer_name, gating_mode):
                     # Use utility gating
-                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
-                        (p.grad.data + noise) * (1 - scaled_utility),
-                        alpha=-1.0*group["lr"],
-                    )
+                    freeze_high_utility = group.get("freeze_high_utility", False)
+                    freeze_threshold = group.get("freeze_threshold", 0.52)
+
+                    if freeze_high_utility:
+                        # Freeze high-utility params (scaled_utility >= threshold), update others
+                        freeze_mask = scaled_utility >= freeze_threshold
+                        update_scale = (1 - scaled_utility)
+                        update_scale = update_scale.masked_fill(freeze_mask, 0.0)
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
+                            (p.grad.data + noise) * update_scale,
+                            alpha=-1.0*group["lr"],
+                        )
+                    else:
+                        # Standard utility gating
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
+                            (p.grad.data + noise) * (1 - scaled_utility),
+                            alpha=-1.0*group["lr"],
+                        )
                 else:
-                    # Use fixed scaling at 0.5 (like SGD with matched LR)
-                    p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
-                        (p.grad.data + noise) * 0.5,
-                        alpha=-1.0*group["lr"],
-                    )
+                    # Use fixed scaling (non_gated_scale)
+                    non_gated_scale = group["non_gated_scale"]
+                    if non_gated_scale > 0.0:
+                        p.data.mul_(1 - group["lr"] * group["weight_decay"]).add_(
+                            (p.grad.data + noise) * non_gated_scale,
+                            alpha=-1.0*group["lr"],
+                        )
+                    # else: non_gated_scale == 0.0 means freeze (no update)
 
         # Compute statistics (same as standard UPGD)
         if all_scaled_utilities:
@@ -191,6 +238,7 @@ class FirstOrderGlobalUPGDLayerSelective(torch.optim.Optimizer):
             self.layer_stats = {}
             for layer_name in layer_utilities:
                 layer_util_tensor = torch.cat(layer_utilities[layer_name])
+                layer_raw_util_tensor = torch.cat(layer_raw_utilities[layer_name])
                 layer_grad_tensor = torch.cat(layer_gradients[layer_name])
                 layer_weight_tensor = torch.cat(layer_weights[layer_name])
                 layer_total = layer_util_tensor.numel()
@@ -211,6 +259,7 @@ class FirstOrderGlobalUPGDLayerSelective(torch.optim.Optimizer):
                     'std': layer_util_tensor.std().item(),
                     'min': layer_util_tensor.min().item(),
                     'max': layer_util_tensor.max().item(),
+                    'raw_max': layer_raw_util_tensor.max().item(),
                     'count': layer_total,
                     'gating_applied': layer_gating_applied[layer_name],  # Track gating status
                     'hist_0_20': hist_0_20,
@@ -284,6 +333,8 @@ class FirstOrderGlobalUPGDLayerSelective(torch.optim.Optimizer):
             for layer_name, layer_stat in self.layer_stats.items():
                 stats[f'layer/{layer_name}/utility_mean'] = layer_stat['mean']
                 stats[f'layer/{layer_name}/utility_std'] = layer_stat['std']
+                stats[f'layer/{layer_name}/utility_max'] = layer_stat['max']
+                stats[f'layer/{layer_name}/raw_utility_max'] = layer_stat.get('raw_max', 0.0)
                 stats[f'layer/{layer_name}/gating_applied'] = 1.0 if layer_stat['gating_applied'] else 0.0
 
                 # Add histogram stats

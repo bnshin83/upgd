@@ -55,6 +55,11 @@ class FirstOrderGlobalUPGDClampedSymmetric(torch.optim.Optimizer):
         num_clamped_params = 0
         total_params = 0
 
+        # Per-layer tracking
+        layer_utilities = {}
+        layer_gradients = {}
+        layer_weights = {}
+
         # Second pass: update parameters with SYMMETRIC CLAMPING
         for group in self.param_groups:
             min_clamp = group["min_clamp"]
@@ -82,6 +87,17 @@ class FirstOrderGlobalUPGDClampedSymmetric(torch.optim.Optimizer):
                 all_gradients.append(p.grad.flatten())
                 all_weights.append(p.data.flatten())
                 all_raw_utilities.append((state["avg_utility"] / bias_correction).flatten())
+
+                # Collect for per-layer statistics
+                # Extract layer name from parameter name (e.g., "linear_1.weight" -> "linear_1")
+                layer_name = name.split('.')[0] if '.' in name else name
+                if layer_name not in layer_utilities:
+                    layer_utilities[layer_name] = []
+                    layer_gradients[layer_name] = []
+                    layer_weights[layer_name] = []
+                layer_utilities[layer_name].append(scaled_utility.flatten())
+                layer_gradients[layer_name].append(p.grad.flatten())
+                layer_weights[layer_name].append(p.data.flatten())
 
                 # UPGD update with CLAMPED utility
                 noise = torch.randn_like(p.grad) * group["sigma"]
@@ -146,6 +162,60 @@ class FirstOrderGlobalUPGDClampedSymmetric(torch.optim.Optimizer):
             self.utility_hist_60_80_pct = (self.utility_hist_60_80 / total_params_count) * 100
             self.utility_hist_80_100_pct = (self.utility_hist_80_100 / total_params_count) * 100
             self.utility_total_params = total_params_count
+
+            # Compute per-layer statistics
+            self.layer_stats = {}
+            for layer_name in layer_utilities:
+                layer_util_tensor = torch.cat(layer_utilities[layer_name])
+                layer_grad_tensor = torch.cat(layer_gradients[layer_name])
+                layer_weight_tensor = torch.cat(layer_weights[layer_name])
+
+                layer_total = layer_util_tensor.numel()
+
+                # Compute 9-bin histogram (same as global)
+                hist_0_20 = ((layer_util_tensor >= 0.0) & (layer_util_tensor < 0.2)).sum().item()
+                hist_20_40 = ((layer_util_tensor >= 0.2) & (layer_util_tensor < 0.4)).sum().item()
+                hist_40_44 = ((layer_util_tensor >= 0.4) & (layer_util_tensor < 0.44)).sum().item()
+                hist_44_48 = ((layer_util_tensor >= 0.44) & (layer_util_tensor < 0.48)).sum().item()
+                hist_48_52 = ((layer_util_tensor >= 0.48) & (layer_util_tensor < 0.52)).sum().item()
+                hist_52_56 = ((layer_util_tensor >= 0.52) & (layer_util_tensor < 0.56)).sum().item()
+                hist_56_60 = ((layer_util_tensor >= 0.56) & (layer_util_tensor < 0.6)).sum().item()
+                hist_60_80 = ((layer_util_tensor >= 0.6) & (layer_util_tensor < 0.8)).sum().item()
+                hist_80_100 = ((layer_util_tensor >= 0.8) & (layer_util_tensor <= 1.0)).sum().item()
+
+                self.layer_stats[layer_name] = {
+                    'mean': layer_util_tensor.mean().item(),
+                    'std': layer_util_tensor.std().item(),
+                    'min': layer_util_tensor.min().item(),
+                    'max': layer_util_tensor.max().item(),
+                    'count': layer_total,
+                    # 9-bin histogram (counts)
+                    'hist_0_20': hist_0_20,
+                    'hist_20_40': hist_20_40,
+                    'hist_40_44': hist_40_44,
+                    'hist_44_48': hist_44_48,
+                    'hist_48_52': hist_48_52,
+                    'hist_52_56': hist_52_56,
+                    'hist_56_60': hist_56_60,
+                    'hist_60_80': hist_60_80,
+                    'hist_80_100': hist_80_100,
+                    # 9-bin histogram (percentages)
+                    'hist_0_20_pct': (hist_0_20 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_20_40_pct': (hist_20_40 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_40_44_pct': (hist_40_44 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_44_48_pct': (hist_44_48 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_48_52_pct': (hist_48_52 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_52_56_pct': (hist_52_56 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_56_60_pct': (hist_56_60 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_60_80_pct': (hist_60_80 / layer_total) * 100 if layer_total > 0 else 0,
+                    'hist_80_100_pct': (hist_80_100 / layer_total) * 100 if layer_total > 0 else 0,
+                    # Gradient stats
+                    'grad_mean': torch.abs(layer_grad_tensor).mean().item(),
+                    'grad_std': torch.abs(layer_grad_tensor).std().item(),
+                    # Weight stats
+                    'weight_mean': torch.abs(layer_weight_tensor).mean().item(),
+                    'weight_std': torch.abs(layer_weight_tensor).std().item(),
+                }
         else:
             # Defaults
             self.num_clamped_params = 0
@@ -153,6 +223,7 @@ class FirstOrderGlobalUPGDClampedSymmetric(torch.optim.Optimizer):
             self.clamped_percentage = 0.0
             self.mean_utility_clamped = 0.0
             self.mean_utility_unclamped = 0.0
+            self.layer_stats = {}
 
         self.global_max_util = global_max_util.item() if isinstance(global_max_util, torch.Tensor) else global_max_util
 
@@ -210,6 +281,46 @@ class FirstOrderGlobalUPGDClampedSymmetric(torch.optim.Optimizer):
                 'utility/hist_80_100_pct': self.utility_hist_80_100_pct,
                 'utility/total_params': self.utility_total_params,
             })
+
+        # Add per-layer statistics
+        if hasattr(self, 'layer_stats') and self.layer_stats:
+            for layer_name, layer_stat in self.layer_stats.items():
+                # Basic utility statistics per layer
+                stats[f'layer/{layer_name}/utility_mean'] = layer_stat['mean']
+                stats[f'layer/{layer_name}/utility_std'] = layer_stat['std']
+                stats[f'layer/{layer_name}/utility_min'] = layer_stat['min']
+                stats[f'layer/{layer_name}/utility_max'] = layer_stat['max']
+                stats[f'layer/{layer_name}/param_count'] = layer_stat['count']
+
+                # 9-bin histogram (counts)
+                stats[f'layer/{layer_name}/hist_0_20'] = layer_stat['hist_0_20']
+                stats[f'layer/{layer_name}/hist_20_40'] = layer_stat['hist_20_40']
+                stats[f'layer/{layer_name}/hist_40_44'] = layer_stat['hist_40_44']
+                stats[f'layer/{layer_name}/hist_44_48'] = layer_stat['hist_44_48']
+                stats[f'layer/{layer_name}/hist_48_52'] = layer_stat['hist_48_52']
+                stats[f'layer/{layer_name}/hist_52_56'] = layer_stat['hist_52_56']
+                stats[f'layer/{layer_name}/hist_56_60'] = layer_stat['hist_56_60']
+                stats[f'layer/{layer_name}/hist_60_80'] = layer_stat['hist_60_80']
+                stats[f'layer/{layer_name}/hist_80_100'] = layer_stat['hist_80_100']
+
+                # 9-bin histogram (percentages)
+                stats[f'layer/{layer_name}/hist_0_20_pct'] = layer_stat['hist_0_20_pct']
+                stats[f'layer/{layer_name}/hist_20_40_pct'] = layer_stat['hist_20_40_pct']
+                stats[f'layer/{layer_name}/hist_40_44_pct'] = layer_stat['hist_40_44_pct']
+                stats[f'layer/{layer_name}/hist_44_48_pct'] = layer_stat['hist_44_48_pct']
+                stats[f'layer/{layer_name}/hist_48_52_pct'] = layer_stat['hist_48_52_pct']
+                stats[f'layer/{layer_name}/hist_52_56_pct'] = layer_stat['hist_52_56_pct']
+                stats[f'layer/{layer_name}/hist_56_60_pct'] = layer_stat['hist_56_60_pct']
+                stats[f'layer/{layer_name}/hist_60_80_pct'] = layer_stat['hist_60_80_pct']
+                stats[f'layer/{layer_name}/hist_80_100_pct'] = layer_stat['hist_80_100_pct']
+
+                # Gradient statistics per layer
+                stats[f'layer/{layer_name}/grad_mean'] = layer_stat['grad_mean']
+                stats[f'layer/{layer_name}/grad_std'] = layer_stat['grad_std']
+
+                # Weight statistics per layer
+                stats[f'layer/{layer_name}/weight_mean'] = layer_stat['weight_mean']
+                stats[f'layer/{layer_name}/weight_std'] = layer_stat['weight_std']
 
         return stats
 

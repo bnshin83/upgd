@@ -174,11 +174,29 @@ class RunStatsWithCurvature:
             'global_max': [],
             'total_params': None,  # Will be set once from optimizer
         }
-        # Per-layer utility histograms
+        # Per-layer utility histograms (all 9 bins)
         all_layer_utility_hist_per_step = {
-            'linear_1': {'steps': [], 'hist_48_52_pct': [], 'hist_52_56_pct': []},
-            'linear_2': {'steps': [], 'hist_48_52_pct': [], 'hist_52_56_pct': []},
-            'linear_3': {'steps': [], 'hist_48_52_pct': [], 'hist_52_56_pct': []},
+            'linear_1': {
+                'steps': [],
+                'hist_0_20_pct': [], 'hist_20_40_pct': [], 'hist_40_44_pct': [], 'hist_44_48_pct': [],
+                'hist_48_52_pct': [], 'hist_52_56_pct': [], 'hist_56_60_pct': [], 'hist_60_80_pct': [], 'hist_80_100_pct': []
+            },
+            'linear_2': {
+                'steps': [],
+                'hist_0_20_pct': [], 'hist_20_40_pct': [], 'hist_40_44_pct': [], 'hist_44_48_pct': [],
+                'hist_48_52_pct': [], 'hist_52_56_pct': [], 'hist_56_60_pct': [], 'hist_60_80_pct': [], 'hist_80_100_pct': []
+            },
+            'linear_3': {
+                'steps': [],
+                'hist_0_20_pct': [], 'hist_20_40_pct': [], 'hist_40_44_pct': [], 'hist_44_48_pct': [],
+                'hist_48_52_pct': [], 'hist_52_56_pct': [], 'hist_56_60_pct': [], 'hist_60_80_pct': [], 'hist_80_100_pct': []
+            },
+        }
+        # Per-layer max utility tracking (raw + scaled), logged whenever utility stats are available
+        all_layer_utility_max_per_step = {
+            'linear_1': {'steps': [], 'utility_max': [], 'raw_utility_max': []},
+            'linear_2': {'steps': [], 'utility_max': [], 'raw_utility_max': []},
+            'linear_3': {'steps': [], 'utility_max': [], 'raw_utility_max': []},
         }
 
         # Current task step tracking (reset after each task for per-task averaging)
@@ -482,14 +500,30 @@ class RunStatsWithCurvature:
                         if all_utility_hist_per_step['total_params'] is None:
                             all_utility_hist_per_step['total_params'] = utility_stats.get('utility/total_params', 0)
 
-                        # Per-layer utility histograms
+                        # Per-layer utility histograms (all 9 bins)
                         for layer in ['linear_1', 'linear_2', 'linear_3']:
+                            # Check if this layer has data (use any bin as indicator)
                             key_48_52 = f'layer/{layer}/hist_48_52_pct'
-                            key_52_56 = f'layer/{layer}/hist_52_56_pct'
                             if key_48_52 in utility_stats:
                                 all_layer_utility_hist_per_step[layer]['steps'].append(i)
-                                all_layer_utility_hist_per_step[layer]['hist_48_52_pct'].append(utility_stats[key_48_52])
-                                all_layer_utility_hist_per_step[layer]['hist_52_56_pct'].append(utility_stats.get(key_52_56, 0))
+                                # Collect all 9 bins
+                                all_layer_utility_hist_per_step[layer]['hist_0_20_pct'].append(utility_stats.get(f'layer/{layer}/hist_0_20_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_20_40_pct'].append(utility_stats.get(f'layer/{layer}/hist_20_40_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_40_44_pct'].append(utility_stats.get(f'layer/{layer}/hist_40_44_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_44_48_pct'].append(utility_stats.get(f'layer/{layer}/hist_44_48_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_48_52_pct'].append(utility_stats.get(f'layer/{layer}/hist_48_52_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_52_56_pct'].append(utility_stats.get(f'layer/{layer}/hist_52_56_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_56_60_pct'].append(utility_stats.get(f'layer/{layer}/hist_56_60_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_60_80_pct'].append(utility_stats.get(f'layer/{layer}/hist_60_80_pct', 0))
+                                all_layer_utility_hist_per_step[layer]['hist_80_100_pct'].append(utility_stats.get(f'layer/{layer}/hist_80_100_pct', 0))
+
+                            # Per-layer max utilities (raw + scaled)
+                            key_umax = f'layer/{layer}/utility_max'
+                            key_raw_umax = f'layer/{layer}/raw_utility_max'
+                            if key_umax in utility_stats or key_raw_umax in utility_stats:
+                                all_layer_utility_max_per_step[layer]['steps'].append(i)
+                                all_layer_utility_max_per_step[layer]['utility_max'].append(utility_stats.get(key_umax, 0.0))
+                                all_layer_utility_max_per_step[layer]['raw_utility_max'].append(utility_stats.get(key_raw_umax, 0.0))
                 
                 # Log histograms every 100 steps using wandb.Histogram() for proper visualization
                 if i % 100 == 0 and hasattr(optimizer, 'get_histogram_tensors'):
@@ -685,6 +719,7 @@ class RunStatsWithCurvature:
         if all_utility_hist_per_step['steps']:
             log_data['utility_histogram_per_step'] = all_utility_hist_per_step
             log_data['layer_utility_histogram_per_step'] = all_layer_utility_hist_per_step
+            log_data['layer_utility_max_per_step'] = all_layer_utility_max_per_step
 
         # Log comprehensive final summary to wandb
         if self.wandb_enabled:

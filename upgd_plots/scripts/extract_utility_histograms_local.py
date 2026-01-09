@@ -47,36 +47,66 @@ LAYERS = ['linear_1', 'linear_2', 'linear_3']
 DATASET_CONFIGS = {
     'mini_imagenet': {
         'display_name': 'Mini-ImageNet',
-        'runs': {
-            'UPGD (Full)': '2rorn0u1',
-            'UPGD (Output Only)': 'lv4hrwao',
-            'UPGD (Hidden Only)': 'ddyu1m95',
-            'UPGD (Hidden+Output)': 'tval9wyc',
-            'UPGD (Clamped 0.52)': 'ap0ll118',
-            'UPGD (Clamped 0.48-0.52)': 'b1n4yksn',
-            'UPGD (Clamped 0.44-0.56)': 'jqlsiz5h',
-            'S&P': '4q72hdev',
+        'use_json': True,  # Extract from experiment JSON files
+        'logs_subdir': 'label_permuted_mini_imagenet_stats',
+        'seed': 2,
+        'experiments': {
+            'S&P': 'sgd/fully_connected_relu_with_hooks/lr_0.01_sigma_0.01_beta_utility_0.9_weight_decay_0.001_n_samples_1000000',
+            'UPGD (Full)': 'upgd_fo_global/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+            'UPGD (Output Only)': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_output_only_n_samples_1000000',
+            'UPGD (Hidden Only)': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_only_n_samples_1000000',
+            'UPGD (Hidden+Output)': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_and_output_n_samples_1000000',
+            'UPGD (Clamped 0.52)': 'upgd_fo_global_clamped052/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+            'UPGD (Clamped 0.48-0.52)': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
+            'UPGD (Clamped 0.44-0.56)': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
         }
     },
     'input_mnist': {
         'display_name': 'Input-Permuted MNIST',
-        'runs': {
-            # TODO: Add run IDs for input_mnist experiments
-            # Example: 'UPGD (Full)': 'xxxxxxxx',
+        'use_json': True,  # Extract from experiment JSON files instead of WandB
+        'logs_subdir': 'input_permuted_mnist_stats',
+        'seed': 2,
+        'experiments': {
+            'S&P': 'sgd/fully_connected_relu_with_hooks/lr_0.001_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+            'UPGD (Full)': 'upgd_fo_global/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+            'UPGD (Output Only)': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_gating_mode_output_only_n_samples_1000000',
+            'UPGD (Hidden Only)': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_gating_mode_hidden_only_n_samples_1000000',
+            'UPGD (Hidden+Output)': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_gating_mode_hidden_and_output_n_samples_1000000',
+            'UPGD (Clamped 0.52)': 'upgd_fo_global_clamped052/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_n_samples_1000000',
+            'UPGD (Clamped 0.48-0.52)': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
+            'UPGD (Clamped 0.44-0.56)': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.1_beta_utility_0.9999_weight_decay_0.01_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
         }
     },
     'emnist': {
         'display_name': 'Label-Permuted EMNIST',
-        'runs': {
-            # TODO: Add run IDs for emnist experiments
-            # Example: 'UPGD (Full)': 'xxxxxxxx',
+        'use_json': True,
+        'logs_subdir': 'label_permuted_emnist_stats',
+        'seed': 2,
+        'experiments': {
+            'S&P': 'sgd/fully_connected_relu_with_hooks/lr_0.01_sigma_0.01_beta_utility_0.9_weight_decay_0.001_n_samples_1000000',
+            'UPGD (Full)': 'upgd_fo_global/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+            'UPGD (Output Only)': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_output_only_n_samples_1000000',
+            'UPGD (Hidden Only)': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_only_n_samples_1000000',
+            'UPGD (Hidden+Output)': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_gating_mode_hidden_and_output_n_samples_1000000',
+            'UPGD (Clamped 0.52)': 'upgd_fo_global_clamped052/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_n_samples_1000000',
+            'UPGD (Clamped 0.48-0.52)': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
+            'UPGD (Clamped 0.44-0.56)': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.9_weight_decay_0.0_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
         }
     },
     'cifar10': {
         'display_name': 'Label-Permuted CIFAR-10',
-        'runs': {
-            # TODO: Add run IDs for cifar10 experiments
-            # Example: 'UPGD (Full)': 'xxxxxxxx',
+        'use_json': True,
+        'logs_subdir': 'label_permuted_cifar10_stats',
+        'seed': 2,
+        'experiments': {
+            'S&P': 'sgd/fully_connected_relu_with_hooks/lr_0.01_sigma_0.01_beta_utility_0.999_weight_decay_0.001_n_samples_1000000',
+            'UPGD (Full)': 'upgd_fo_global/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_n_samples_1000000',
+            'UPGD (Output Only)': 'upgd_fo_global_outputonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_gating_mode_output_only_n_samples_1000000',
+            'UPGD (Hidden Only)': 'upgd_fo_global_hiddenonly/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_gating_mode_hidden_only_n_samples_1000000',
+            'UPGD (Hidden+Output)': 'upgd_fo_global_hiddenandoutput/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_gating_mode_hidden_and_output_n_samples_1000000',
+            'UPGD (Clamped 0.52)': 'upgd_fo_global_clamped052/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_n_samples_1000000',
+            'UPGD (Clamped 0.48-0.52)': 'upgd_fo_global_clamped_48_52/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_min_clamp_0.48_max_clamp_0.52_n_samples_1000000',
+            'UPGD (Clamped 0.44-0.56)': 'upgd_fo_global_clamped_44_56/fully_connected_relu_with_hooks/lr_0.01_sigma_0.001_beta_utility_0.999_weight_decay_0.0_min_clamp_0.44_max_clamp_0.56_n_samples_1000000',
         }
     },
 }
@@ -98,8 +128,43 @@ def read_summary_file(run_dir):
     return {}
 
 
+def extract_histograms_from_json(json_data):
+    """Extract utility histograms from experiment JSON file (final time point)."""
+    result = {
+        'utility': {'global': {}, 'layers': {layer: {} for layer in LAYERS}},
+        'raw_utility': {'global': {}},
+    }
+
+    # Extract utility histogram data (final time point)
+    if 'utility_histogram_per_step' in json_data:
+        hist_data = json_data['utility_histogram_per_step']
+
+        # Get final values (last element in each array)
+        for i, suffix in enumerate(UTILITY_BIN_SUFFIXES):
+            key = f'hist_{suffix}_pct'
+            if key in hist_data and len(hist_data[key]) > 0:
+                result['utility']['global'][UTILITY_BIN_LABELS[i]] = hist_data[key][-1]
+
+        # Extract total_params if available
+        if 'total_params' in hist_data:
+            result['total_params'] = hist_data['total_params']
+
+    # Extract per-layer utility histograms
+    if 'layer_utility_histogram_per_step' in json_data:
+        layer_data = json_data['layer_utility_histogram_per_step']
+
+        for layer in LAYERS:
+            if layer in layer_data:
+                for i, suffix in enumerate(UTILITY_BIN_SUFFIXES):
+                    key = f'hist_{suffix}_pct'
+                    if key in layer_data[layer] and len(layer_data[layer][key]) > 0:
+                        result['utility']['layers'][layer][UTILITY_BIN_LABELS[i]] = layer_data[layer][key][-1]
+
+    return result
+
+
 def extract_histograms(summary):
-    """Extract utility and raw utility histograms from summary."""
+    """Extract utility and raw utility histograms from WandB summary."""
     result = {
         'utility': {'global': {}, 'layers': {layer: {} for layer in LAYERS}},
         'raw_utility': {'global': {}},
@@ -180,12 +245,6 @@ def extract_for_dataset(dataset):
 
     config = DATASET_CONFIGS[dataset]
     display_name = config['display_name']
-    target_runs = config['runs']
-
-    if not target_runs:
-        print(f"No run IDs configured for {display_name}")
-        print("Please add run IDs to DATASET_CONFIGS in this script")
-        return
 
     print("=" * 70)
     print(f"Extracting Utility Histograms for {display_name}")
@@ -193,36 +252,83 @@ def extract_for_dataset(dataset):
 
     all_data = {}
 
-    for exp_name, run_id in target_runs.items():
-        print(f"\n{exp_name} (run: {run_id})")
+    # Check if using JSON extraction or WandB extraction
+    if config.get('use_json', False):
+        # Extract from experiment JSON files
+        logs_dir = PROJECT_DIR / 'logs' / config['logs_subdir']
+        seed = config.get('seed', 2)
+        experiments = config.get('experiments', {})
 
-        run_dir = find_run_dir(run_id)
-        if not run_dir:
-            print("  Run directory not found!")
-            continue
+        if not experiments:
+            print(f"No experiments configured for {display_name}")
+            return
 
-        summary = read_summary_file(run_dir)
-        if not summary:
-            print("  No summary file found")
-            continue
+        for exp_name, exp_path in experiments.items():
+            print(f"\n{exp_name}")
 
-        hist_data = extract_histograms(summary)
-        hist_data['run_id'] = run_id
+            json_path = logs_dir / exp_path / f'{seed}.json'
+            if not json_path.exists():
+                print(f"  File not found: {json_path}")
+                continue
 
-        all_data[exp_name] = hist_data
+            print(f"  Loading {json_path.name}...")
+            with open(json_path) as f:
+                json_data = json.load(f)
 
-        # Print summary
-        if hist_data['utility']['global']:
-            print("  Scaled utility (global):")
-            for label, val in hist_data['utility']['global'].items():
-                if val > 0.1:
-                    print(f"    {label}: {val:.2f}%")
+            hist_data = extract_histograms_from_json(json_data)
+            all_data[exp_name] = hist_data
 
-        if hist_data['raw_utility']['global']:
-            print("  Raw utility (global):")
-            for label, val in hist_data['raw_utility']['global'].items():
-                if val > 0.1:
-                    print(f"    {label}: {val:.2f}%")
+            # Print summary
+            if hist_data['utility']['global']:
+                print("  Scaled utility (global):")
+                for label, val in hist_data['utility']['global'].items():
+                    if val > 0.1:
+                        print(f"    {label}: {val:.2f}%")
+
+            if hist_data['utility']['layers']:
+                has_layer_data = any(hist_data['utility']['layers'].get(layer) for layer in LAYERS)
+                if has_layer_data:
+                    print("  ✓ Per-layer data available")
+
+    else:
+        # Extract from WandB summary files (original behavior)
+        target_runs = config.get('runs', {})
+
+        if not target_runs:
+            print(f"No run IDs configured for {display_name}")
+            print("Please add run IDs to DATASET_CONFIGS in this script")
+            return
+
+        for exp_name, run_id in target_runs.items():
+            print(f"\n{exp_name} (run: {run_id})")
+
+            run_dir = find_run_dir(run_id)
+            if not run_dir:
+                print("  Run directory not found!")
+                continue
+
+            summary = read_summary_file(run_dir)
+            if not summary:
+                print("  No summary file found")
+                continue
+
+            hist_data = extract_histograms(summary)
+            hist_data['run_id'] = run_id
+
+            all_data[exp_name] = hist_data
+
+            # Print summary
+            if hist_data['utility']['global']:
+                print("  Scaled utility (global):")
+                for label, val in hist_data['utility']['global'].items():
+                    if val > 0.1:
+                        print(f"    {label}: {val:.2f}%")
+
+            if hist_data['raw_utility']['global']:
+                print("  Raw utility (global):")
+                for label, val in hist_data['raw_utility']['global'].items():
+                    if val > 0.1:
+                        print(f"    {label}: {val:.2f}%")
 
     # Save to JSON
     output_file = OUTPUT_DIR / f"{dataset}_utility_histograms.json"

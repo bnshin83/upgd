@@ -26,6 +26,9 @@ from core.learner.weight_upgd import (
     FirstOrderGlobalUPGDClamped052Learner,
     UPGDLayerSelectiveFullLearner, UPGDLayerSelectiveOutputOnlyLearner,
     UPGDLayerSelectiveHiddenOnlyLearner, UPGDLayerSelectiveHiddenAndOutputLearner,
+    UPGDOutputOnlyScale0Learner, UPGDOutputOnlyScale027Learner,
+    UPGDOutputOnlyScale05Learner, UPGDOutputOnlyScale073Learner, UPGDOutputOnlyScale1Learner,
+    UPGDOutputFrozenLearner, UPGDFreezeHighUtility52Learner,
     UPGDClamped48_52Learner, UPGDClamped44_56Learner, UPGDClamped40_60Learner,
     SecondOrderLocalUPGDLearner, SecondOrderNonprotectingLocalUPGDLearner,
     SecondOrderGlobalUPGDLearner, SecondOrderNonprotectingGlobalUPGDLearner,
@@ -116,6 +119,19 @@ learners = {
     "upgd_fo_global_outputonly": UPGDLayerSelectiveOutputOnlyLearner,
     "upgd_fo_global_hiddenonly": UPGDLayerSelectiveHiddenOnlyLearner,
     "upgd_fo_global_hiddenandoutput": UPGDLayerSelectiveHiddenAndOutputLearner,
+
+    # Output-only with non-gated scale ablation
+    "upgd_fo_global_outputonly_scale0": UPGDOutputOnlyScale0Learner,
+    "upgd_fo_global_outputonly_scale27": UPGDOutputOnlyScale027Learner,
+    "upgd_fo_global_outputonly_scale50": UPGDOutputOnlyScale05Learner,
+    "upgd_fo_global_outputonly_scale73": UPGDOutputOnlyScale073Learner,
+    "upgd_fo_global_outputonly_scale1": UPGDOutputOnlyScale1Learner,
+
+    # Output frozen (output layer completely frozen)
+    "upgd_fo_global_outputfrozen": UPGDOutputFrozenLearner,
+
+    # Freeze high-utility parameters (scaled_utility >= threshold)
+    "upgd_fo_global_freezehigh52": UPGDFreezeHighUtility52Learner,
 
     # Symmetric clamping
     "upgd_fo_global_clamped_48_52": UPGDClamped48_52Learner,

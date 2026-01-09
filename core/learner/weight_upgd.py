@@ -101,6 +101,73 @@ class UPGDLayerSelectiveHiddenAndOutputLearner(FirstOrderGlobalUPGDLayerSelectiv
     def __init__(self, network=None, optim_kwargs={}):
         super().__init__(network, optim_kwargs, gating_mode='hidden_and_output')
 
+# Non-gated scale ablation learners (for output_only mode)
+# These test different scaling factors for hidden layers when only output is gated
+class UPGDOutputOnlyScaleLearner(Learner):
+    """Base class for output-only gating with configurable non_gated_scale."""
+    def __init__(self, network=None, optim_kwargs={}, non_gated_scale=0.5):
+        optim_kwargs = {**optim_kwargs, 'gating_mode': 'output_only', 'non_gated_scale': non_gated_scale}
+        optimizer = FirstOrderGlobalUPGDLayerSelective
+        # Format scale as string: 0.0 -> "0", 0.27 -> "027", 0.5 -> "05", 0.73 -> "073", 1.0 -> "1"
+        if non_gated_scale == 0.0:
+            scale_str = "0"
+        elif non_gated_scale == 1.0:
+            scale_str = "1"
+        else:
+            scale_str = f"{int(non_gated_scale*100):02d}"
+        name = f"upgd_fo_global_outputonly_scale{scale_str}"
+        super().__init__(name, network, optimizer, optim_kwargs)
+
+class UPGDOutputOnlyScale0Learner(UPGDOutputOnlyScaleLearner):
+    """Output-only gating with hidden layers frozen (scale=0.0)."""
+    def __init__(self, network=None, optim_kwargs={}):
+        super().__init__(network, optim_kwargs, non_gated_scale=0.0)
+
+class UPGDOutputOnlyScale027Learner(UPGDOutputOnlyScaleLearner):
+    """Output-only gating with hidden layers at max protection level (scale=0.27)."""
+    def __init__(self, network=None, optim_kwargs={}):
+        super().__init__(network, optim_kwargs, non_gated_scale=0.27)
+
+class UPGDOutputOnlyScale05Learner(UPGDOutputOnlyScaleLearner):
+    """Output-only gating with hidden layers at neutral level (scale=0.5) [default]."""
+    def __init__(self, network=None, optim_kwargs={}):
+        super().__init__(network, optim_kwargs, non_gated_scale=0.5)
+
+class UPGDOutputOnlyScale073Learner(UPGDOutputOnlyScaleLearner):
+    """Output-only gating with hidden layers at min protection level (scale=0.73)."""
+    def __init__(self, network=None, optim_kwargs={}):
+        super().__init__(network, optim_kwargs, non_gated_scale=0.73)
+
+class UPGDOutputOnlyScale1Learner(UPGDOutputOnlyScaleLearner):
+    """Output-only gating with hidden layers at full SGD (scale=1.0)."""
+    def __init__(self, network=None, optim_kwargs={}):
+        super().__init__(network, optim_kwargs, non_gated_scale=1.0)
+
+# Output frozen learner (output layer completely frozen, hidden layers trainable)
+class UPGDOutputFrozenLearner(Learner):
+    """Output layer frozen, hidden layers get fixed scaling (non_gated_scale)."""
+    def __init__(self, network=None, optim_kwargs={}, non_gated_scale=1.0):
+        optim_kwargs = {**optim_kwargs, 'gating_mode': 'output_frozen', 'non_gated_scale': non_gated_scale}
+        optimizer = FirstOrderGlobalUPGDLayerSelective
+        name = "upgd_fo_global_outputfrozen"
+        super().__init__(name, network, optimizer, optim_kwargs)
+
+# Freeze high-utility parameters (scaled_utility >= threshold)
+class UPGDFreezeHighUtilityLearner(Learner):
+    """Freeze parameters where scaled_utility >= threshold, update others with gating."""
+    def __init__(self, network=None, optim_kwargs={}, freeze_threshold=0.52):
+        optim_kwargs = {**optim_kwargs, 'gating_mode': 'full', 'freeze_high_utility': True,
+                       'freeze_threshold': freeze_threshold}
+        optimizer = FirstOrderGlobalUPGDLayerSelective
+        threshold_str = f"{int(freeze_threshold*100)}"
+        name = f"upgd_fo_global_freezehigh{threshold_str}"
+        super().__init__(name, network, optimizer, optim_kwargs)
+
+class UPGDFreezeHighUtility52Learner(UPGDFreezeHighUtilityLearner):
+    """Freeze params with scaled_utility >= 0.52."""
+    def __init__(self, network=None, optim_kwargs={}):
+        super().__init__(network, optim_kwargs, freeze_threshold=0.52)
+
 # Symmetric clamping learners
 class FirstOrderGlobalUPGDClampedSymmetricLearner(Learner):
     """Base class for symmetric clamping. Subclasses specify min/max clamp."""
