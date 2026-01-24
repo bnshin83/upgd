@@ -1,8 +1,10 @@
-# copied from https://github.com/vwxyzjn/cleanrl/blob/master/cleanrl/ppo_continuous_action.py
+# Unified PPO with multiple optimizer support for UPGD variants
+# Based on CleanRL's ppo_continuous_action.py
 import os
 import random
 import time
 from dataclasses import dataclass
+from typing import Literal
 
 import gymnasium as gym
 import numpy as np
@@ -12,6 +14,9 @@ import torch.optim as optim
 import tyro
 from torch.distributions.normal import Normal
 from torch.utils.tensorboard import SummaryWriter
+
+from core.run.rl.adaupgd import AdaptiveUPGD
+from core.run.rl.rl_upgd_layerselective import RLLayerSelectiveUPGD
 
 
 @dataclass
@@ -26,40 +31,46 @@ class Args:
     """if toggled, cuda will be enabled by default"""
     track: bool = False
     """if toggled, this experiment will be tracked with Weights and Biases"""
-    wandb_project_name: str = "cleanRL"
+    wandb_project_name: str = "upgd-rl"
     """the wandb's project name"""
     wandb_entity: str = None
     """the entity (team) of wandb's project"""
     capture_video: bool = False
-    """whether to capture videos of the agent performances (check out `videos` folder)"""
+    """whether to capture videos of the agent performances"""
     save_model: bool = False
-    """whether to save model into the `runs/{run_name}` folder"""
-    upload_model: bool = False
-    """whether to upload the saved model to huggingface"""
-    hf_entity: str = ""
-    """the user or org name of the model repository from the Hugging Face Hub"""
+    """whether to save model"""
+
+    # Optimizer selection
+    optimizer: Literal["adam", "upgd_full", "upgd_output_only", "upgd_hidden_only", 
+                       "upgd_actor_output", "upgd_critic_output"] = "adam"
+    """optimizer to use: adam, upgd_full, upgd_output_only, upgd_hidden_only, upgd_actor_output, upgd_critic_output"""
 
     # Algorithm specific arguments
-    env_id: str = "HalfCheetah-v4"
+    env_id: str = "Ant-v4"
     """the id of the environment"""
     total_timesteps: int = 1000000
     """total timesteps of the experiments"""
     learning_rate: float = 3e-4
     """the learning rate of the optimizer"""
-    weight_decay: float = 0.0
-    """the weight decay of the optimizer"""
+    weight_decay: float = 0.001
+    """the weight decay (for UPGD)"""
+    beta_utility: float = 0.999
+    """decay rate of the utility (for UPGD)"""
+    sigma: float = 0.001
+    """the sigma of noise (for UPGD)"""
+    non_gated_scale: float = 0.5
+    """scaling factor for non-gated layers (for layer-selective UPGD)"""
+
     num_envs: int = 1
     """the number of parallel game environments"""
     num_steps: int = 2048
-    """the number of steps to run in each environment per policy rollout"""
+    """the number of steps per rollout"""
     anneal_lr: bool = True
-    """Toggle learning rate annealing for policy and value networks"""
-    lr_anneal_timesteps: int = 0
-    """timesteps over which to anneal LR (0 = use total_timesteps)"""
+    """Toggle learning rate annealing"""
     gamma: float = 0.99
     """the discount factor gamma"""
     gae_lambda: float = 0.95
-    """the lambda for the general advantage estimation"""
+    """lambda for GAE"""
     num_minibatches: int = 32
     """the number of mini-batches"""
     update_epochs: int = 10
@@ -69,23 +80,20 @@ class Args:
     clip_coef: float = 0.2
     """the surrogate clipping coefficient"""
     clip_vloss: bool = True
-    """Toggles whether or not to use a clipped loss for the value function, as per the paper."""
+    """Toggles clipped value loss"""
     ent_coef: float = 0.0
     """coefficient of the entropy"""
     vf_coef: float = 0.5
     """coefficient of the value function"""
     max_grad_norm: float = 0.5
-    """the maximum norm for the gradient clipping"""
+    """maximum norm for gradient clipping"""
     target_kl: float = None
-    """the target KL divergence threshold"""
+    """target KL divergence threshold"""
 
-    # to be filled in runtime
+    # Runtime computed
     batch_size: int = 0
-    """the batch size (computed in runtime)"""
     minibatch_size: int = 0
-    """the mini-batch size (computed in runtime)"""
     num_iterations: int = 0
-    """the number of iterations (computed in runtime)"""
 
 
 def make_env(env_id, idx, capture_video, run_name, gamma):
@@ -95,18 +103,16 @@ def make_env(env_id, idx, capture_video, run_name, gamma):
             env = gym.wrappers.RecordVideo(env, f"videos/{run_name}")
         else:
             env = gym.make(env_id)
-        env = gym.wrappers.FlattenObservation(env)  # deal with dm_control's Dict observation space
+        env = gym.wrappers.FlattenObservation(env)
         env = gym.wrappers.RecordEpisodeStatistics(env)
         env = gym.wrappers.ClipAction(env)
         env = gym.wrappers.NormalizeObservation(env)
-        # gymnasium 1.0+ requires observation_space argument
         env = gym.wrappers.TransformObservation(
             env, lambda obs: np.clip(obs, -10, 10), env.observation_space
         )
         env = gym.wrappers.NormalizeReward(env, gamma=gamma)
         env = gym.wrappers.TransformReward(env, lambda reward: np.clip(reward, -10, 10))
         return env
-
     return thunk
 
 
@@ -148,16 +154,56 @@ class Agent(nn.Module):
         return action, probs.log_prob(action).sum(1), probs.entropy().sum(1), self.critic(x)
 
 
+def create_optimizer(agent, args):
+    """Create optimizer based on args.optimizer setting."""
+    if args.optimizer == "adam":
+        return optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
+    
+    elif args.optimizer == "upgd_full":
+        return AdaptiveUPGD(
+            agent.parameters(),
+            lr=args.learning_rate,
+            weight_decay=args.weight_decay,
+            beta_utility=args.beta_utility,
+            sigma=args.sigma,
+        )
+    
+    elif args.optimizer.startswith("upgd_"):
+        # Layer-selective UPGD variants
+        gating_mode_map = {
+            "upgd_output_only": "output_only",
+            "upgd_hidden_only": "hidden_only",
+            "upgd_actor_output": "actor_output_only",
+            "upgd_critic_output": "critic_output_only",
+        }
+        gating_mode = gating_mode_map.get(args.optimizer)
+        if gating_mode is None:
+            raise ValueError(f"Unknown optimizer: {args.optimizer}")
+        
+        return RLLayerSelectiveUPGD(
+            agent.named_parameters(),
+            lr=args.learning_rate,
+            weight_decay=args.weight_decay,
+            beta_utility=args.beta_utility,
+            sigma=args.sigma,
+            gating_mode=gating_mode,
+            non_gated_scale=args.non_gated_scale,
+        )
+    
+    else:
+        raise ValueError(f"Unknown optimizer: {args.optimizer}")
+
+
 if __name__ == "__main__":
     args = tyro.cli(Args)
     args.batch_size = int(args.num_envs * args.num_steps)
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
-    run_name = f"{args.env_id}__{args.exp_name}__{args.seed}__wd{args.weight_decay}__{int(time.time())}"
+    
+    run_name = f"{args.env_id}__{args.optimizer}__{args.seed}__{int(time.time())}"
 
     if args.track:
         import wandb
-
         wandb.init(
             project=args.wandb_project_name,
             entity=args.wandb_entity,
@@ -167,13 +213,14 @@ if __name__ == "__main__":
             monitor_gym=True,
             save_code=True,
         )
+    
     writer = SummaryWriter(f"runs_upgd/{run_name}")
     writer.add_text(
         "hyperparameters",
         "|param|value|\n|-|-|\n%s" % ("\n".join([f"|{key}|{value}|" for key, value in vars(args).items()])),
     )
 
-    # TRY NOT TO MODIFY: seeding
+    # Seeding
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
@@ -181,16 +228,22 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() and args.cuda else "cpu")
 
-    # env setup
+    # Environment setup
     envs = gym.vector.SyncVectorEnv(
         [make_env(args.env_id, i, args.capture_video, run_name, args.gamma) for i in range(args.num_envs)]
     )
     assert isinstance(envs.single_action_space, gym.spaces.Box), "only continuous action space is supported"
 
     agent = Agent(envs).to(device)
-    optimizer = optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5, weight_decay=args.weight_decay)
+    optimizer = create_optimizer(agent, args)
+    
+    # Print layer info for debugging
+    print(f"Optimizer: {args.optimizer}")
+    print("Agent layers:")
+    for name, param in agent.named_parameters():
+        print(f"  {name}: {param.shape}")
 
-    # ALGO Logic: Storage setup
+    # Storage setup
     obs = torch.zeros((args.num_steps, args.num_envs) + envs.single_observation_space.shape).to(device)
     actions = torch.zeros((args.num_steps, args.num_envs) + envs.single_action_space.shape).to(device)
     logprobs = torch.zeros((args.num_steps, args.num_envs)).to(device)
@@ -198,7 +251,7 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
-    # TRY NOT TO MODIFY: start the game
+    # Start training
     global_step = 0
     start_time = time.time()
     next_obs, _ = envs.reset(seed=args.seed)
@@ -206,12 +259,9 @@ if __name__ == "__main__":
     next_done = torch.zeros(args.num_envs).to(device)
 
     for iteration in range(1, args.num_iterations + 1):
-        # Annealing the rate if instructed to do so.
+        # Learning rate annealing
         if args.anneal_lr:
-            # Use lr_anneal_timesteps if specified, otherwise use total_timesteps
-            anneal_timesteps = args.lr_anneal_timesteps if args.lr_anneal_timesteps > 0 else args.total_timesteps
-            anneal_iterations = anneal_timesteps // args.batch_size
-            frac = max(0.0, 1.0 - (iteration - 1.0) / anneal_iterations)
+            frac = 1.0 - (iteration - 1.0) / args.num_iterations
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
 
@@ -220,21 +270,18 @@ if __name__ == "__main__":
             obs[step] = next_obs
             dones[step] = next_done
 
-            # ALGO LOGIC: action logic
             with torch.no_grad():
                 action, logprob, _, value = agent.get_action_and_value(next_obs)
                 values[step] = value.flatten()
             actions[step] = action
             logprobs[step] = logprob
 
-            # TRY NOT TO MODIFY: execute the game and log data.
             next_obs, reward, terminations, truncations, infos = envs.step(action.cpu().numpy())
             next_done = np.logical_or(terminations, truncations)
             rewards[step] = torch.tensor(reward).to(device).view(-1)
             next_obs, next_done = torch.Tensor(next_obs).to(device), torch.Tensor(next_done).to(device)
 
-            # gymnasium 1.0+ compatible episode info extraction
-            # Check for 'final_info' (older API) or 'episode' directly (newer API)
+            # Log episodic returns (gymnasium 1.0+ compatible)
             if "final_info" in infos:
                 for info in infos["final_info"]:
                     if info and "episode" in info:
@@ -242,10 +289,8 @@ if __name__ == "__main__":
                         writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
                         writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
             elif "episode" in infos:
-                # New gymnasium API: episode info is directly in infos with mask in _episode
                 episode_info = infos["episode"]
                 if "_episode" in infos:
-                    # Mask indicates which envs finished an episode
                     mask = infos["_episode"]
                     for i, done in enumerate(mask):
                         if done:
@@ -253,7 +298,7 @@ if __name__ == "__main__":
                             writer.add_scalar("charts/episodic_return", episode_info["r"][i], global_step)
                             writer.add_scalar("charts/episodic_length", episode_info["l"][i], global_step)
 
-        # bootstrap value if not done
+        # GAE advantage computation
         with torch.no_grad():
             next_value = agent.get_value(next_obs).reshape(1, -1)
             advantages = torch.zeros_like(rewards).to(device)
@@ -269,7 +314,7 @@ if __name__ == "__main__":
                 advantages[t] = lastgaelam = delta + args.gamma * args.gae_lambda * nextnonterminal * lastgaelam
             returns = advantages + values
 
-        # flatten the batch
+        # Flatten the batch
         b_obs = obs.reshape((-1,) + envs.single_observation_space.shape)
         b_logprobs = logprobs.reshape(-1)
         b_actions = actions.reshape((-1,) + envs.single_action_space.shape)
@@ -277,7 +322,7 @@ if __name__ == "__main__":
         b_returns = returns.reshape(-1)
         b_values = values.reshape(-1)
 
-        # Optimizing the policy and value network
+        # Optimize policy and value network
         b_inds = np.arange(args.batch_size)
         clipfracs = []
         for epoch in range(args.update_epochs):
@@ -291,7 +336,6 @@ if __name__ == "__main__":
                 ratio = logratio.exp()
 
                 with torch.no_grad():
-                    # calculate approx_kl http://joschu.net/blog/kl-approx.html
                     old_approx_kl = (-logratio).mean()
                     approx_kl = ((ratio - 1) - logratio).mean()
                     clipfracs += [((ratio - 1.0).abs() > args.clip_coef).float().mean().item()]
@@ -310,9 +354,7 @@ if __name__ == "__main__":
                 if args.clip_vloss:
                     v_loss_unclipped = (newvalue - b_returns[mb_inds]) ** 2
                     v_clipped = b_values[mb_inds] + torch.clamp(
-                        newvalue - b_values[mb_inds],
-                        -args.clip_coef,
-                        args.clip_coef,
+                        newvalue - b_values[mb_inds], -args.clip_coef, args.clip_coef
                     )
                     v_loss_clipped = (v_clipped - b_returns[mb_inds]) ** 2
                     v_loss_max = torch.max(v_loss_unclipped, v_loss_clipped)
@@ -335,7 +377,7 @@ if __name__ == "__main__":
         var_y = np.var(y_true)
         explained_var = np.nan if var_y == 0 else 1 - np.var(y_true - y_pred) / var_y
 
-        # TRY NOT TO MODIFY: record rewards for plotting purposes
+        # Logging
         writer.add_scalar("charts/learning_rate", optimizer.param_groups[0]["lr"], global_step)
         writer.add_scalar("losses/value_loss", v_loss.item(), global_step)
         writer.add_scalar("losses/policy_loss", pg_loss.item(), global_step)
@@ -344,8 +386,46 @@ if __name__ == "__main__":
         writer.add_scalar("losses/approx_kl", approx_kl.item(), global_step)
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
-        print("SPS:", int(global_step / (time.time() - start_time)))
-        writer.add_scalar("charts/SPS", int(global_step / (time.time() - start_time)), global_step)
+        
+        sps = int(global_step / (time.time() - start_time))
+        print(f"SPS: {sps}")
+        writer.add_scalar("charts/SPS", sps, global_step)
+        
+        # Log UPGD-specific stats if available
+        if hasattr(optimizer, 'get_utility_stats'):
+            for key, value in optimizer.get_utility_stats().items():
+                if isinstance(value, (int, float)):
+                    writer.add_scalar(key, value, global_step)
+        
+        # Log plasticity metrics periodically (every 10 iterations to reduce overhead)
+        if iteration % 10 == 0:
+            try:
+                from core.run.rl.plasticity_metrics import compute_layer_activations_stats, PlasticityMetrics
+                
+                # Compute activation-based metrics (dead neurons)
+                with torch.no_grad():
+                    sample_obs = b_obs[:256]  # Use subset for efficiency
+                    dead_stats = compute_layer_activations_stats(agent, sample_obs, device)
+                    for key, value in dead_stats.items():
+                        writer.add_scalar(f"plasticity/{key}", value, global_step)
+                
+                # Compute weight-based metrics (stable rank, weight norms)
+                pm = PlasticityMetrics(agent, device)
+                weight_stats = pm.compute_weight_stats()
+                for key, value in weight_stats.items():
+                    writer.add_scalar(f"plasticity/{key}", value, global_step)
+                
+                # Compute stable rank and effective rank (less frequently due to SVD cost)
+                if iteration % 50 == 0:
+                    srank_stats = pm.compute_stable_rank()
+                    for key, value in srank_stats.items():
+                        writer.add_scalar(f"plasticity/{key}", value, global_step)
+                    
+                    erank_stats = pm.compute_effective_rank()
+                    for key, value in erank_stats.items():
+                        writer.add_scalar(f"plasticity/{key}", value, global_step)
+            except Exception as e:
+                print(f"Warning: Could not compute plasticity metrics: {e}")
 
     envs.close()
     writer.close()
