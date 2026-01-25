@@ -12,15 +12,16 @@
 #SBATCH --error=/scratch/gautschi/shin283/upgd/logs/%j_incr_cifar_upgd_cbp.err
 
 cd /scratch/gautschi/shin283/loss-of-plasticity/lop/incremental_cifar
-module load cuda
-module load python
+
+# Load modules
+module load cuda python
 
 # Display GPU information
 nvidia-smi
 
-# Activate conda environment for loss-of-plasticity
-source /scratch/gautschi/shin283/miniconda3/etc/profile.d/conda.sh
-conda activate /scratch/gautschi/shin283/conda_envs/lop
+# Activate Python 3.11 venv (avoids conda Python 3.8 library conflicts)
+source /scratch/gautschi/shin283/loss-of-plasticity/.lop_venv_compute/bin/activate
+export PYTHONPATH="/scratch/gautschi/shin283/loss-of-plasticity:$PYTHONPATH"
 
 # WandB Configuration
 export WANDB_PROJECT="upgd-incremental-cifar"
@@ -41,10 +42,14 @@ echo "========================================="
 export CUDA_VISIBLE_DEVICES=0
 export WANDB_RUN_NAME="${SLURM_JOB_ID}_incr_cifar_upgd_cbp_seed_0"
 
-python3.8 incremental_cifar_experiment.py \
+python incremental_cifar_experiment.py \
     --config ./cfg/upgd_with_cbp.json \
     --verbose \
-    --experiment-index 0
+    --experiment-index 0 \
+    --wandb \
+    --wandb-project "${WANDB_PROJECT}" \
+    --wandb-entity "${WANDB_ENTITY}" \
+    --wandb-run-name "${WANDB_RUN_NAME}"
 
 echo "========================================="
 echo "UPGD+CBP Incremental CIFAR-100 experiment completed"
