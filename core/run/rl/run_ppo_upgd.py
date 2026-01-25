@@ -391,7 +391,27 @@ if __name__ == "__main__":
         print(f"SPS: {sps}")
         writer.add_scalar("charts/SPS", sps, global_step)
         
-        # Log UPGD-specific stats if available
+        # Direct WandB logging for immediate metrics (in addition to TensorBoard sync)
+        if args.track:
+            wandb_metrics = {
+                "charts/learning_rate": optimizer.param_groups[0]["lr"],
+                "charts/SPS": sps,
+                "losses/value_loss": v_loss.item(),
+                "losses/policy_loss": pg_loss.item(),
+                "losses/entropy": entropy_loss.item(),
+                "losses/old_approx_kl": old_approx_kl.item(),
+                "losses/approx_kl": approx_kl.item(),
+                "losses/clipfrac": np.mean(clipfracs),
+                "losses/explained_variance": explained_var,
+            }
+            # Add UPGD-specific stats
+            if hasattr(optimizer, 'get_utility_stats'):
+                for key, value in optimizer.get_utility_stats().items():
+                    if isinstance(value, (int, float)):
+                        wandb_metrics[key] = value
+            wandb.log(wandb_metrics, step=global_step)
+        
+        # Log UPGD-specific stats to TensorBoard
         if hasattr(optimizer, 'get_utility_stats'):
             for key, value in optimizer.get_utility_stats().items():
                 if isinstance(value, (int, float)):
