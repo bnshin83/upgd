@@ -17,6 +17,8 @@ from torch.utils.tensorboard import SummaryWriter
 
 from core.run.rl.adaupgd import AdaptiveUPGD
 from core.run.rl.rl_upgd_layerselective import RLLayerSelectiveUPGD
+from core.run.rl.regime_metrics import RegimeMetrics, create_regime_tracker
+from core.logger import Logger
 
 
 @dataclass
@@ -41,7 +43,7 @@ class Args:
     """whether to save model"""
 
     # Optimizer selection
-    optimizer: Literal["adam", "upgd_full", "upgd_output_only", "upgd_hidden_only", 
+    optimizer: Literal["adam", "upgd_full", "upgd_full_old", "upgd_output_only", "upgd_hidden_only", 
                        "upgd_actor_output", "upgd_critic_output"] = "adam"
     """optimizer to use: adam, upgd_full, upgd_output_only, upgd_hidden_only, upgd_actor_output, upgd_critic_output"""
 
@@ -160,6 +162,20 @@ def create_optimizer(agent, args):
         return optim.Adam(agent.parameters(), lr=args.learning_rate, eps=1e-5)
     
     elif args.optimizer == "upgd_full":
+        # Use RLLayerSelectiveUPGD with full gating for consistency
+        # (previously used AdaptiveUPGD which lacked global_max_util clamp)
+        return RLLayerSelectiveUPGD(
+            agent.named_parameters(),
+            lr=args.learning_rate,
+            weight_decay=args.weight_decay,
+            beta_utility=args.beta_utility,
+            sigma=args.sigma,
+            gating_mode="full",
+            non_gated_scale=args.non_gated_scale,
+        )
+    
+    elif args.optimizer == "upgd_full_old":
+        # Original AdaptiveUPGD (no global_max_util clamp) for A/B comparison
         return AdaptiveUPGD(
             agent.parameters(),
             lr=args.learning_rate,
@@ -167,7 +183,7 @@ def create_optimizer(agent, args):
             beta_utility=args.beta_utility,
             sigma=args.sigma,
         )
-    
+
     elif args.optimizer.startswith("upgd_"):
         # Layer-selective UPGD variants
         gating_mode_map = {
@@ -251,8 +267,52 @@ if __name__ == "__main__":
     dones = torch.zeros((args.num_steps, args.num_envs)).to(device)
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
+    # JSON logging setup
+    logger = Logger(log_dir="/scratch/gautschi/shin283/upgd/logs")
+    optimizer_hps = {
+        "lr": args.learning_rate,
+        "weight_decay": args.weight_decay,
+        "beta_utility": args.beta_utility,
+        "sigma": args.sigma,
+    }
+    logger.initialize_log_path(
+        task=f"rl_{args.env_id}",
+        learner=args.optimizer,
+        network="mlp_64_64",
+        optimizer_hps=optimizer_hps,
+        seed=args.seed,
+        n_samples=args.total_timesteps
+    )
+
+    # Data collection lists for JSON logging
+    json_data = {
+        "episodic_returns": [],
+        "episodic_lengths": [],
+        "SPS_per_iteration": [],
+        "policy_loss_per_iteration": [],
+        "value_loss_per_iteration": [],
+        "entropy_per_iteration": [],
+        "approx_kl_per_iteration": [],
+        "clipfrac_per_iteration": [],
+        "explained_variance_per_iteration": [],
+        "learning_rate_per_iteration": [],
+        # Network health metrics
+        "plasticity_per_iteration": [],
+        "dormant_units_per_iteration": [],
+        # Weight/gradient statistics
+        "weight_l2_per_iteration": [],
+        "weight_l1_per_iteration": [],
+        "grad_l2_per_iteration": [],
+        "grad_l1_per_iteration": [],
+        # UPGD-specific
+        "utility_histogram_per_iteration": {},
+        "layer_utility_per_iteration": {},
+        "global_max_utility_per_iteration": [],
+    }
+
     # Start training
     global_step = 0
+    regime_tracker = create_regime_tracker(device)  # Regime detection metrics
     start_time = time.time()
     next_obs, _ = envs.reset(seed=args.seed)
     next_obs = torch.Tensor(next_obs).to(device)
@@ -285,18 +345,26 @@ if __name__ == "__main__":
             if "final_info" in infos:
                 for info in infos["final_info"]:
                     if info and "episode" in info:
-                        print(f"global_step={global_step}, episodic_return={info['episode']['r']}")
-                        writer.add_scalar("charts/episodic_return", info["episode"]["r"], global_step)
-                        writer.add_scalar("charts/episodic_length", info["episode"]["l"], global_step)
+                        ep_return = float(info['episode']['r'])
+                        ep_length = int(info['episode']['l'])
+                        print(f"global_step={global_step}, episodic_return={ep_return}")
+                        writer.add_scalar("charts/episodic_return", ep_return, global_step)
+                        writer.add_scalar("charts/episodic_length", ep_length, global_step)
+                        json_data["episodic_returns"].append(ep_return)
+                        json_data["episodic_lengths"].append(ep_length)
             elif "episode" in infos:
                 episode_info = infos["episode"]
                 if "_episode" in infos:
                     mask = infos["_episode"]
                     for i, done in enumerate(mask):
                         if done:
-                            print(f"global_step={global_step}, episodic_return={episode_info['r'][i]}")
-                            writer.add_scalar("charts/episodic_return", episode_info["r"][i], global_step)
-                            writer.add_scalar("charts/episodic_length", episode_info["l"][i], global_step)
+                            ep_return = float(episode_info['r'][i])
+                            ep_length = int(episode_info['l'][i])
+                            print(f"global_step={global_step}, episodic_return={ep_return}")
+                            writer.add_scalar("charts/episodic_return", ep_return, global_step)
+                            writer.add_scalar("charts/episodic_length", ep_length, global_step)
+                            json_data["episodic_returns"].append(ep_return)
+                            json_data["episodic_lengths"].append(ep_length)
 
         # GAE advantage computation
         with torch.no_grad():
@@ -387,10 +455,70 @@ if __name__ == "__main__":
         writer.add_scalar("losses/clipfrac", np.mean(clipfracs), global_step)
         writer.add_scalar("losses/explained_variance", explained_var, global_step)
         
+        # === REGIME METRICS (added 2026-02-07) ===
+        try:
+            # Compute observation distribution shift
+            regime_obs_stats = regime_tracker.update_observation_stats(b_obs)
+            
+            # Compute TD-error / target shift metrics
+            td_errors = b_returns - b_values
+            regime_td_stats = regime_tracker.update_td_error_stats(td_errors, b_values)
+            
+            # Compute overall regime indicator
+            regime_indicator = regime_tracker.compute_regime_indicator()
+            
+            # Log all regime metrics
+            all_regime_metrics = {**regime_obs_stats, **regime_td_stats, **regime_indicator}
+            for key, value in all_regime_metrics.items():
+                if isinstance(value, (int, float)):
+                    writer.add_scalar(key, value, global_step)
+        except Exception as e:
+            print(f'Regime metrics error: {e}')
+        # === END REGIME METRICS ===
+        
         sps = int(global_step / (time.time() - start_time))
         print(f"SPS: {sps}")
         writer.add_scalar("charts/SPS", sps, global_step)
-        
+
+        # Collect per-iteration metrics for JSON logging
+        json_data["SPS_per_iteration"].append(sps)
+        json_data["policy_loss_per_iteration"].append(float(pg_loss.item()))
+        json_data["value_loss_per_iteration"].append(float(v_loss.item()))
+        json_data["entropy_per_iteration"].append(float(entropy_loss.item()))
+        json_data["approx_kl_per_iteration"].append(float(approx_kl.item()))
+        json_data["clipfrac_per_iteration"].append(float(np.mean(clipfracs)))
+        json_data["explained_variance_per_iteration"].append(float(explained_var) if not np.isnan(explained_var) else 0.0)
+        json_data["learning_rate_per_iteration"].append(float(optimizer.param_groups[0]["lr"]))
+
+        # Collect weight/gradient statistics for JSON
+        total_weight_l2 = 0.0
+        total_weight_l1 = 0.0
+        total_grad_l2 = 0.0
+        total_grad_l1 = 0.0
+        for param in agent.parameters():
+            if param.requires_grad:
+                total_weight_l2 += param.norm(2).item() ** 2
+                total_weight_l1 += param.abs().sum().item()
+                if param.grad is not None:
+                    total_grad_l2 += param.grad.norm(2).item() ** 2
+                    total_grad_l1 += param.grad.abs().sum().item()
+        json_data["weight_l2_per_iteration"].append(float(np.sqrt(total_weight_l2)))
+        json_data["weight_l1_per_iteration"].append(float(total_weight_l1))
+        json_data["grad_l2_per_iteration"].append(float(np.sqrt(total_grad_l2)))
+        json_data["grad_l1_per_iteration"].append(float(total_grad_l1))
+
+        # Collect UPGD-specific stats for JSON
+        if hasattr(optimizer, 'get_utility_stats'):
+            utility_stats = optimizer.get_utility_stats()
+            if 'utility/global_max' in utility_stats:
+                json_data["global_max_utility_per_iteration"].append(float(utility_stats['utility/global_max']))
+            # Collect histogram bins
+            for key, value in utility_stats.items():
+                if 'hist_' in key and isinstance(value, (int, float)):
+                    if key not in json_data["utility_histogram_per_iteration"]:
+                        json_data["utility_histogram_per_iteration"][key] = []
+                    json_data["utility_histogram_per_iteration"][key].append(float(value))
+
         # Direct WandB logging for immediate metrics (in addition to TensorBoard sync)
         if args.track:
             wandb_metrics = {
@@ -421,31 +549,63 @@ if __name__ == "__main__":
         if iteration % 10 == 0:
             try:
                 from core.run.rl.plasticity_metrics import compute_layer_activations_stats, PlasticityMetrics
-                
+
                 # Compute activation-based metrics (dead neurons)
                 with torch.no_grad():
                     sample_obs = b_obs[:256]  # Use subset for efficiency
                     dead_stats = compute_layer_activations_stats(agent, sample_obs, device)
                     for key, value in dead_stats.items():
                         writer.add_scalar(f"plasticity/{key}", value, global_step)
-                
+                    # Collect for JSON
+                    if "dead/total_ratio" in dead_stats:
+                        json_data["dormant_units_per_iteration"].append(float(dead_stats["dead/total_ratio"]))
+
                 # Compute weight-based metrics (stable rank, weight norms)
                 pm = PlasticityMetrics(agent, device)
                 weight_stats = pm.compute_weight_stats()
                 for key, value in weight_stats.items():
                     writer.add_scalar(f"plasticity/{key}", value, global_step)
-                
+
                 # Compute stable rank and effective rank (less frequently due to SVD cost)
                 if iteration % 50 == 0:
                     srank_stats = pm.compute_stable_rank()
                     for key, value in srank_stats.items():
                         writer.add_scalar(f"plasticity/{key}", value, global_step)
-                    
+
                     erank_stats = pm.compute_effective_rank()
                     for key, value in erank_stats.items():
                         writer.add_scalar(f"plasticity/{key}", value, global_step)
             except Exception as e:
                 print(f"Warning: Could not compute plasticity metrics: {e}")
 
+        # Save JSON checkpoint periodically (every 50 iterations)
+        if iteration % 50 == 0:
+            checkpoint_data = dict(json_data)
+            checkpoint_data["task"] = f"rl_{args.env_id}"
+            checkpoint_data["learner"] = args.optimizer
+            checkpoint_data["network"] = "mlp_64_64"
+            checkpoint_data["optimizer_hps"] = optimizer_hps
+            checkpoint_data["seed"] = args.seed
+            checkpoint_data["total_timesteps"] = args.total_timesteps
+            checkpoint_data["current_iteration"] = iteration
+            checkpoint_data["current_global_step"] = global_step
+            checkpoint_data["status"] = "in_progress"
+            logger.log(**checkpoint_data)
+
     envs.close()
     writer.close()
+
+    # Final JSON save
+    final_data = dict(json_data)
+    final_data["task"] = f"rl_{args.env_id}"
+    final_data["learner"] = args.optimizer
+    final_data["network"] = "mlp_64_64"
+    final_data["optimizer_hps"] = optimizer_hps
+    final_data["seed"] = args.seed
+    final_data["total_timesteps"] = args.total_timesteps
+    final_data["final_iteration"] = args.num_iterations
+    final_data["final_global_step"] = global_step
+    final_data["total_runtime_seconds"] = time.time() - start_time
+    final_data["status"] = "completed"
+    logger.log(**final_data)
+    print(f"JSON log saved to: {logger.log_path}")
