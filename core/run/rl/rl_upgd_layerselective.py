@@ -99,7 +99,7 @@ class RLLayerSelectiveUPGD(torch.optim.Optimizer):
                 if current_util_max > global_max_util:
                     global_max_util = current_util_max
         
-        global_max_util = torch.max(global_max_util, torch.tensor(1e-8))
+        # Removed clamp to match original UPGD (Elsayed) — no floor on global_max_util
         
         # Second pass: update parameters and collect statistics
         for group in self.param_groups:
