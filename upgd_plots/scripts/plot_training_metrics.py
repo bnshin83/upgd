@@ -46,9 +46,9 @@ DATASET_CONFIGS = {
         'logs_subdir': 'label_permuted_mini_imagenet_stats',
         'experiments': {
             'S&P': {
-                # Baseline available in this workspace (perturbed SGD).
-                # Note: differs slightly from optimizer_best_sets.csv for mini-ImageNet.
-                'path': 'sgd/fully_connected_relu_with_hooks/lr_0.005_sigma_0.01_beta_utility_0.9_weight_decay_0.002_n_samples_1000000',
+                # Baseline using paper hyperparameters from optimizer_best_sets.csv
+                # α = 0.01, σ = 0.01, λ = 0.001
+                'path': 'sgd/fully_connected_relu_with_hooks/lr_0.01_sigma_0.01_beta_utility_0.9_weight_decay_0.001_n_samples_1000000',
                 'color': '#7f7f7f',
                 'linestyle': '--',
             },
@@ -353,7 +353,7 @@ def plot_metric_comparison(metric_key: str, ylabel: str, title: str,
         overall_avg = np.mean(per_task_avg)
         results[name] = {
             'overall_avg': overall_avg,
-            'final_avg': np.mean(per_task_avg[-20:]) if len(per_task_avg) >= 20 else per_task_avg[-1],
+            'final_avg': np.mean(per_task_avg[-40:]) if len(per_task_avg) >= 40 else per_task_avg[-1],
             'n_seeds': len(all_metrics),
         }
 
@@ -383,20 +383,21 @@ def plot_metric_comparison(metric_key: str, ylabel: str, title: str,
 
 
 def print_summary_table(all_results: dict):
-    """Print summary table of all metrics."""
-    print("\n" + "=" * 80)
-    print(f"SUMMARY: {DISPLAY_NAME} Experiment Results")
-    print("=" * 80)
+    """Print summary table of all metrics and save to file."""
+    lines = []
+    lines.append("=" * 90)
+    lines.append(f"SUMMARY: {DISPLAY_NAME} Experiment Results")
+    lines.append("=" * 90)
 
     methods = list(EXPERIMENTS.keys())
 
     for metric_name, results in all_results.items():
         if not results:
             continue
-        print(f"\n{metric_name}:")
-        print("-" * 60)
-        print(f"{'Method':<30} {'Overall Avg':>15} {'Seeds':>10}")
-        print("-" * 60)
+        lines.append(f"\n{metric_name}:")
+        lines.append("-" * 75)
+        lines.append(f"{'Method':<30} {'Overall Avg':>15} {'Final Avg':>15} {'Seeds':>10}")
+        lines.append("-" * 75)
 
         sorted_results = sorted(
             [(m, results.get(m, {})) for m in methods if m in results],
@@ -404,11 +405,22 @@ def print_summary_table(all_results: dict):
             reverse=True
         )
         for name, stats in sorted_results:
-            avg = stats.get('overall_avg', 0)
+            overall = stats.get('overall_avg', 0)
+            final = stats.get('final_avg', 0)
             seeds = stats.get('n_seeds', 0)
-            print(f"{name:<30} {avg:>15.4f} {seeds:>10}")
+            lines.append(f"{name:<30} {overall:>15.4f} {final:>15.4f} {seeds:>10}")
 
-    print("\n" + "=" * 80)
+    lines.append("\n" + "=" * 90)
+
+    # Print to stdout
+    for line in lines:
+        print(line)
+
+    # Save to file
+    summary_file = PLOT_DIR / 'summary_table.txt'
+    with open(summary_file, 'w') as f:
+        f.write('\n'.join(lines))
+    print(f"\nSummary table saved to: {summary_file}")
 
 
 def main():

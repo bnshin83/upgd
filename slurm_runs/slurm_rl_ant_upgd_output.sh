@@ -30,10 +30,10 @@ echo "Start time: $(date)"
 echo "========================================="
 
 export CUDA_VISIBLE_DEVICES=0
-export WANDB_RUN_NAME="${SLURM_JOB_ID}_ant_upgd_output_only_seed_0"
+export WANDB_RUN_NAME="${SLURM_JOB_ID}_ant_upgd_output_only_seed_2"
 python3 core/run/rl/run_ppo_upgd.py \
     --env_id Ant-v4 \
-    --seed 0 \
+    --seed 2 \
     --total_timesteps 20000000 \
     --optimizer upgd_output_only \
     --weight_decay 0.0 \

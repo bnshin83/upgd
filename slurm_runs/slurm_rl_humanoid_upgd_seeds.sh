@@ -7,7 +7,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=14
 #SBATCH --gpus-per-node=1
-#SBATCH --time=3-00:00:00
+#SBATCH --time=1-20:00:00
 #SBATCH --array=0-9%8
 #SBATCH --output=/scratch/gautschi/shin283/upgd/logs/%A_%a_rl_humanoid_upgd.out
 #SBATCH --error=/scratch/gautschi/shin283/upgd/logs/%A_%a_rl_humanoid_upgd.err

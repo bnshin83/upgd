@@ -27,3 +27,5 @@ wandb_export_*.csv
 
 # Processed data
 processed_imagenet.pkl
+runs_upgd/
+upgd_plots/figures copy/
