@@ -1,3 +1,4 @@
+.*/
 build/
 *egg*
 generated_cmds/
@@ -5,11 +6,6 @@ dataset/
 # Large experiment directories
 wandb/
 logs/
-results/
-
-# Hidden dirs (but keep .localcontrol)
-.*/
-!.localcontrol/
 
 # Python cache
 __pycache__/
@@ -27,5 +23,6 @@ wandb_export_*.csv
 
 # Processed data
 processed_imagenet.pkl
+
 runs_upgd/
-upgd_plots/figures copy/
+wandb_logs/
