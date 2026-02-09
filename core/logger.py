@@ -47,10 +47,9 @@ class Logger:
         self.log_dir_path = f"{self.log_dir}/{kwargs['task']}/{kwargs['learner']}/{kwargs['network']}/{file_name}/"
         self.log_path = f"{self.log_dir_path}/{kwargs['seed']}.json"
         
-        # Create directory early
-        if not os.path.exists(self.log_dir_path):
-            os.makedirs(self.log_dir_path)
-            print(f"Created log directory: {self.log_dir_path}")
+        # Create directory early (exist_ok=True prevents race condition)
+        os.makedirs(self.log_dir_path, exist_ok=True)
+        print(f"Log directory ready: {self.log_dir_path}")
 
     def log(self, **kwargs):
         # Initialize path if not already done
