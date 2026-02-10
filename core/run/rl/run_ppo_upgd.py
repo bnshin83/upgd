@@ -268,7 +268,7 @@ if __name__ == "__main__":
     values = torch.zeros((args.num_steps, args.num_envs)).to(device)
 
     # JSON logging setup
-    logger = Logger(log_dir="/scratch/gautschi/shin283/upgd/logs")
+    logger = Logger(log_dir="logs")
     optimizer_hps = {
         "lr": args.learning_rate,
         "weight_decay": args.weight_decay,

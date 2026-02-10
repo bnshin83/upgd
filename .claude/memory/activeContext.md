@@ -17,12 +17,13 @@
 - **Status:** Running (8/60 active, tasks 0-7 upgd_full, ~2h elapsed as of 11:15 AM)
 
 ### Gilbreth (A100)
-- **Job ID:** 10269468
-- **Started:** Queued (waiting for SGD jobs to complete)
+- **Job ID:** 10271209 (replaces failed 10269468)
+- **Submitted:** 2026-02-09 ~4:00 PM EST
 - **Tasks:** 10 array jobs (2 seeds parallel each = 20 total seeds)
 - **Method:** adam (baseline)
-- **Timeline:** ~1.67 days (will start ~12:30 PM EST)
-- **Status:** Pending (SGD jobs 10260102 down to 2 tasks; Humanoid should start soon)
+- **Timeline:** ~1.67 days
+- **Status:** Pending (Resources)
+- **Note:** Previous job 10269468 failed — hardcoded `/scratch/gautschi` log path. Fixed to use relative `logs/`.
 
 ## Recent Changes
 - **2026-02-09 PM:** Cross-machine sync system established (Studio ↔ Pro via Tailscale)

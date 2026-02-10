@@ -18,8 +18,8 @@
 - **WandB:** shin283-purdue-university/upgd-rl (filter: *hum_20m*)
 
 ### Gilbreth - Humanoid-v4 Adam Baseline
-- **Job ID:** 10269468
-- **Submitted:** 2026-02-09 ~9:15 AM EST (queued)
+- **Job ID:** 10271209 (replaces failed 10269468)
+- **Submitted:** 2026-02-09 ~4:00 PM EST
 - **Cluster:** Gilbreth (A100-80GB)
 - **Config:** `.localcontrol/experiments/rl/humanoid_gilbreth.sh`
 - **Tasks:** 10 array jobs (0-9%3)
@@ -30,7 +30,8 @@
   - Array task 9: seeds 18,19
 - **Resources:** 2 GPUs per task (full node), 14 CPUs, 20h time limit
 - **Timeline:** ~1.67 days (10 tasks / 3 concurrent)
-- **Status:** PENDING (waiting for SGD jobs 10260102 to complete ~12:30 PM)
+- **Status:** Pending (Resources)
+- **Fix:** Changed hardcoded log path `/scratch/gautschi/...` → relative `logs/` in run_ppo_upgd.py:271
 - **WandB:** shin283-purdue-university/upgd-rl (filter: *hum_20m_adam*)
 
 ## Monitoring
@@ -55,6 +56,15 @@ lc-logs gilbreth 10269468
 - **Gilbreth:** ~2026-02-10 evening (1.67 days from 12:30 PM start)
 - **Gautschi:** ~2026-02-12 evening (3.75 days from 9:15 AM start)
 - **Combined:** All 80 runs by ~2026-02-12/13
+
+## Failed Jobs
+
+### Gilbreth - Humanoid-v4 Adam (FAILED)
+- **Job ID:** 10269468
+- **Failed:** 2026-02-09 ~9:43-9:53 AM EST
+- **Cause:** Hardcoded log path `/scratch/gautschi/shin283/upgd/logs` in `run_ppo_upgd.py:271` — doesn't exist on Gilbreth
+- **Error:** `PermissionError: [Errno 13] Permission denied: '/scratch/gautschi'`
+- **Fix:** Changed to relative path `logs/`, resubmitted as job 10271209
 
 ## Completed Jobs
 
