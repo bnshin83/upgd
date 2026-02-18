@@ -8,6 +8,7 @@ RSYNC_EXCLUDE=(
     "wandb" "logs" "data" ".DS_Store"
     "plots_all_stats" "pgd_plots" "upgd_plots"
     "slurm_status_logs" "results"
+    ".upgd" "runs_upgd"
 )
 
 # Pull config: what to pull FROM cluster

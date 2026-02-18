@@ -62,6 +62,10 @@ class Args:
     """the sigma of noise (for UPGD)"""
     non_gated_scale: float = 0.5
     """scaling factor for non-gated layers (for layer-selective UPGD)"""
+    gating_schedule: str = ""
+    """phase-adaptive gating schedule, e.g. 'h:o:f' for hidden->output->full.
+       Empty string = use fixed gating from --optimizer.
+       When set, --optimizer must be a UPGD variant."""
 
     num_envs: int = 1
     """the number of parallel game environments"""
@@ -216,7 +220,11 @@ if __name__ == "__main__":
     args.minibatch_size = int(args.batch_size // args.num_minibatches)
     args.num_iterations = args.total_timesteps // args.batch_size
     
-    run_name = f"{args.env_id}__{args.optimizer}__{args.seed}__{int(time.time())}"
+    if args.gating_schedule:
+        sched_label = args.gating_schedule.replace(':', '')
+        run_name = f"{args.env_id}__sched_{sched_label}__{args.seed}__{int(time.time())}"
+    else:
+        run_name = f"{args.env_id}__{args.optimizer}__{args.seed}__{int(time.time())}"
 
     if args.track:
         import wandb
@@ -253,6 +261,19 @@ if __name__ == "__main__":
     agent = Agent(envs).to(device)
     optimizer = create_optimizer(agent, args)
     
+    # Phase-adaptive gating setup
+    if args.gating_schedule:
+        schedule_parts = args.gating_schedule.split(":")
+        assert len(schedule_parts) == 3, f"Schedule must have 3 phases, got {len(schedule_parts)}"
+        mode_map = {"h": "hidden_only", "o": "output_only", "f": "full"}
+        schedule_modes = [mode_map[p] for p in schedule_parts]
+        phase_boundaries = [args.num_iterations // 3, 2 * args.num_iterations // 3]
+        assert hasattr(optimizer, 'set_gating_mode'), "gating_schedule requires UPGD optimizer"
+        optimizer.set_gating_mode(schedule_modes[0])
+        current_macro_phase = 0
+        print(f"Phase-adaptive gating: {schedule_modes}")
+        print(f"Boundaries at iterations: {phase_boundaries}")
+
     # Print layer info for debugging
     print(f"Optimizer: {args.optimizer}")
     print("Agent layers:")
@@ -324,6 +345,17 @@ if __name__ == "__main__":
             frac = 1.0 - (iteration - 1.0) / args.num_iterations
             lrnow = frac * args.learning_rate
             optimizer.param_groups[0]["lr"] = lrnow
+
+        # Phase-adaptive gating check
+        if args.gating_schedule:
+            new_phase = 0 if iteration <= phase_boundaries[0] else (
+                1 if iteration <= phase_boundaries[1] else 2
+            )
+            if new_phase != current_macro_phase:
+                current_macro_phase = new_phase
+                optimizer.set_gating_mode(schedule_modes[new_phase])
+                print(f"[Iteration {iteration}] Switched gating to: {schedule_modes[new_phase]}")
+                writer.add_scalar("charts/macro_phase", new_phase, global_step)
 
         for step in range(0, args.num_steps):
             global_step += args.num_envs
@@ -537,6 +569,8 @@ if __name__ == "__main__":
                 for key, value in optimizer.get_utility_stats().items():
                     if isinstance(value, (int, float)):
                         wandb_metrics[key] = value
+            if args.gating_schedule:
+                wandb_metrics["charts/macro_phase"] = current_macro_phase
             wandb.log(wandb_metrics, step=global_step)
         
         # Log UPGD-specific stats to TensorBoard

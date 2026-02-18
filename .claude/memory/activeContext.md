@@ -1,45 +1,46 @@
 # Active Context
 
-**Last Updated:** 2026-02-09
+**Last Updated:** 2026-02-14 (evening session)
 
 ## Current Focus
-- **RL experiments:** Humanoid-v4 running on dual clusters (Gautschi + Gilbreth)
-- **Cross-machine workflow:** Established sync system between Studio and Pro via Tailscale
+- **A0 supervised seed gap:** Last 2 tasks each for output_only + hidden_only on Gautschi (~5h remaining)
+- **A0 UPGD full:** COMPLETED on Gilbreth (10277360 finished)
+- **Gridworld Tier 1C:** NOW RUNNING on Gautschi (7780865) — 25 tasks active
+- **Humanoid remaining:** NOW RUNNING on Gilbreth (10284522) — 6 tasks active
+
+## Three-Machine Setup
+| Machine | Role | Current Jobs |
+|---------|------|-------------|
+| **Gautschi** (H100) | A0 output/hidden (last 2 each) + Gridworld Tier 1C | 7739971, 7739973, 7780865 |
+| **Gilbreth** (A100) | Humanoid remaining (started!) | 10284522 |
+| **Studio** (M3 Ultra) | Gridworld Tier 0 (local, completed or near) | — |
 
 ## Running Jobs
 
-### Gautschi (H100)
-- **Job ID:** 7609377
-- **Started:** 2026-02-09 ~9:15 AM EST
-- **Tasks:** 60 (8 concurrent)
-- **Methods:** upgd_full (0-19), upgd_output_only (20-39), upgd_hidden_only (40-59)
-- **Timeline:** ~3.75 days
-- **Status:** Running (8/60 active, tasks 0-7 upgd_full, ~2h elapsed as of 11:15 AM)
+### Gautschi
+- **a0_upgd_output_only** (7739971): tasks 16-17 running (~4h in), **last 2 tasks**
+- **a0_upgd_hidden_only** (7739973): tasks 16-17 running (~4h in), **last 2 tasks**
+- **gw_tier1c** (7780865): **NEW** — 25 tasks running (20-39), task 4+ pending (MaxCpuPerAccount)
+- **humanoid** (7609377): HELD (unchanged)
 
-### Gilbreth (A100)
-- **Job ID:** 10271209 (replaces failed 10269468)
-- **Submitted:** 2026-02-09 ~4:00 PM EST
-- **Tasks:** 10 array jobs (2 seeds parallel each = 20 total seeds)
-- **Method:** adam (baseline)
-- **Timeline:** ~1.67 days
-- **Status:** Pending (Resources)
-- **Note:** Previous job 10269468 failed — hardcoded `/scratch/gautschi` log path. Fixed to use relative `logs/`.
+### Gilbreth
+- **humanoid_remaining** (10284522): tasks 0-5 running (5-6h in), rest pending — **now active** (A0 freed GPUs)
 
-## Recent Changes
-- **2026-02-09 PM:** Cross-machine sync system established (Studio ↔ Pro via Tailscale)
-  - Created `~/sync-repo.sh` (bash 3.2 compatible) for complete bidirectional sync
-  - Updated `~/.claude/CLAUDE.md` so Claude handles "sync upgd" commands automatically
-  - Tested: synced 732 files from Studio to Pro successfully
-  - Documentation: `~/.claude/MAC_SYNC_SETUP_HISTORY.md`
-- **2026-02-09 AM:** Fixed logger race condition (exist_ok=True in os.makedirs)
-- **2026-02-09 AM:** Created dual-cluster experiment split (Gautschi: UPGD methods, Gilbreth: adam)
-- **2026-02-09 AM:** Added monitoring scripts (monitor_humanoid_dual.sh)
-- **2026-02-09 AM:** Committed .localcontrol/ configs to git for cross-machine work
+## Key Updates This Session
+- Discovered A0 full (10277360) completed on Gilbreth
+- Gridworld Tier 1C submitted to Gautschi (not in previous memory — submitted between sessions)
+- Humanoid remaining now running (was queued behind A0)
+- Created study project at ~/projects/study/ with 18-lesson UPGD teaching plan
+
+## A0 Seed Details
+- Seeds: 0, 3, 5, 7, 8, 11, 14, 16, 19 (+ existing seed 2 = 10 total per method×dataset)
+- Datasets: label_permuted_cifar10_stats, input_permuted_mnist_stats
+- Per-dataset hyperparams from optimizer_best_sets.csv (verified correct)
 
 ## Next Actions
-- Monitor Humanoid-v4 job completion (~3-4 days)
-- Verify all 80 runs complete successfully
-- Extract results from WandB
-- Compare Humanoid-v4 results with Ant-v4 (validate regime hypothesis)
-- Update paper with findings
-- Use "sync upgd" to keep Pro/Studio synchronized during analysis phase
+- A0 output/hidden finish tonight → ALL A0 supervised data ready
+- Pull A0 full results from WandB → check if numbers look right
+- After A0 complete: re-plot paper figures, update tables
+- Monitor Gridworld Tier 1C progress on Gautschi
+- Monitor Humanoid remaining on Gilbreth
+- After humanoid completes: fill RL section (B1)

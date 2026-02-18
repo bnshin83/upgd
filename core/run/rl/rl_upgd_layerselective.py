@@ -42,6 +42,11 @@ class RLLayerSelectiveUPGD(torch.optim.Optimizer):
         )
         super(RLLayerSelectiveUPGD, self).__init__(params, defaults)
     
+    def set_gating_mode(self, new_mode):
+        """Switch gating mode mid-training. Utility estimates are preserved."""
+        for group in self.param_groups:
+            group["gating_mode"] = new_mode
+
     def _should_apply_gating(self, param_name, gating_mode):
         """Determine if utility gating should be applied to this parameter."""
         if gating_mode == 'full':
