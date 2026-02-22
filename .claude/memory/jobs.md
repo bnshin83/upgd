@@ -2,76 +2,68 @@
 
 ## Active Jobs
 
-### Gautschi — A0 UPGD Output-Only
-- **Job ID:** 7739971
-- **Submitted:** 2026-02-14
-- **Config:** `.localcontrol/experiments/supervised/a0_upgd_output_only.sh`
-- **Tasks:** 18 (9 seeds × 2 datasets), 8 concurrent
-- **Seeds:** 0,3,5,7,8,11,14,16,19 (via PLAN_SEEDS remapping)
-- **Datasets:** CIFAR-10 (lr=0.01, σ=0.001, β=0.999, wd=0.0), Input-MNIST (lr=0.01, σ=0.1, β=0.9999, wd=0.01)
-- **Runtime:** ~9h per task
-- **Status:** Tasks 16-17 running (~4h in as of evening Feb 14), **finishing tonight**
-- **WandB:** shin283-purdue-university/upgd
+### Gautschi — SlipperyAnt s4-10 (partial)
+- **Job ID:** 8073259
+- **Config:** `.localcontrol/experiments/rl/sant_val_s4_10.sh`
+- **Tasks:** 6 methods × 7 seeds = 42
+- **Status:**
+  - Tasks 0-5 (std s4-10): completed earlier
+  - Tasks 6-13 (std s8-10 + l2 s4-10): **CANCELED** (freed slots)
+  - Tasks 14-17 (cbp s4-7): **RUNNING**
+  - Tasks 18-41: **HELD** (cbp s8-10 + all UPGD variants)
 
-### Gautschi — A0 UPGD Hidden-Only
-- **Job ID:** 7739973
-- **Config:** `.localcontrol/experiments/supervised/a0_upgd_hidden_only.sh`
-- **Tasks:** 18, 8 concurrent
-- **Same seeds/datasets as above**
-- **Status:** Tasks 16-17 running, **finishing tonight**
-- **WandB:** shin283-purdue-university/upgd
+### Gautschi — CBP Layer-Selective Ablation
+- **Job ID:** 8081884
+- **Submitted:** 2026-02-22
+- **Config:** `.localcontrol/experiments/rl/sant_val_cbp_layers.sh`
+- **Tasks:** cbp_h1, cbp_h2, cbp_no_gnt × 3 seeds = 9
+- **Status:** 9/9 RUNNING
+- **WandB:** sant__cbp_h1, sant__cbp_h2, sant__cbp_no_gnt
 
-### Gautschi — Gridworld Tier 1C (NEW)
-- **Job ID:** 7780865
-- **Status:** 25 tasks running (20-39), task 4+ pending (MaxCpuPerAccount)
-- **Submitted:** Between sessions (not by this Claude instance)
-- **WandB:** shin283-purdue-university/upgd-gridworld
+### Gautschi — UPGD Full (wd=1e-4)
+- **Job ID:** 8081956
+- **Submitted:** 2026-02-22
+- **Config:** `.localcontrol/experiments/rl/sant_val_upgd_wd4.sh`
+- **Tasks:** upgd_full (wd=1e-4) × 3 seeds = 3
+- **Status:** 3/3 RUNNING
+- **WandB:** sant__upgd_full (tag: wd1e-4)
 
-### Gautschi — Humanoid UPGD (HELD)
-- **Job ID:** 7609377
-- **Status:** HELD (JobHeldUser)
-- **Tasks 0-23:** Completed (upgd_full done, output_only tasks 20-23 done)
-- **Tasks 24-31:** Cancelled (accidentally released)
-- **Tasks 32-59:** Held (not started)
-- **Note:** Remaining tasks covered by Gilbreth job 10284522 instead
-
-### Gilbreth — Humanoid Remaining
-- **Job ID:** 10284522
-- **Config:** `.localcontrol/experiments/rl/humanoid_gilbreth_remaining.sh`
-- **Tasks:** 36 (array 24-59, %6 concurrent)
-- **Methods:** upgd_full (unused, already done), upgd_output_only (24-39), upgd_hidden_only (40-59)
-- **Status:** NOW RUNNING — tasks 0-5 active (5-6h in as of evening Feb 14)
-- **WandB:** shin283-purdue-university/upgd-rl
+### Gautschi — Head Intervention
+- **Job ID:** 8082254
+- **Submitted:** 2026-02-22
+- **Config:** `.localcontrol/experiments/rl/sant_val_reset_head.sh`
+- **Tasks:** reset_head + shrink_head × 3 seeds = 6
+- **Status:** RUNNING/PENDING
+- **WandB:** sant__reset_head, sant__shrink_head
 
 ## Completed Jobs
+
 | Job | Cluster | Job ID | Result |
 |-----|---------|--------|--------|
-| A0 UPGD full | Gilbreth | 10277360 | **18/18 tasks complete (Feb 14)** |
-| Ant-v4 full | Gautschi | — | Hidden-only (4843) >> Output-only (3229) |
+| Ant-v4 phase-adaptive batch 1 | Gautschi | 7856803 (0-23) | 24/24 complete, 20-25h each |
+| Ant-v4 phase-adaptive batch 2 | Gautschi | 7883799 (24-49) | 26/26 complete |
+| A0 UPGD full | Gilbreth | 10277360 | 18/18 complete |
+| A0 UPGD output_only | Gautschi | 7739971 | 18/18 complete |
+| A0 UPGD hidden_only | Gautschi | 7739973 | 18/18 complete |
+| Ant-v4 20M | Gautschi | — | Hidden (4843) >> Output (3229) |
 | Humanoid Adam | Gilbreth | 10271209 | 20 seeds complete |
 | Humanoid upgd_full | Gautschi | 7609377 (0-19) | 20 seeds complete |
-| Grid-world v2 | Gautschi | 7688863 | 360/360 tasks complete |
-| Humanoid test | Gautschi | 7608913 | Logger fix validated |
+| Humanoid remaining | Gilbreth | 10284522 | Complete |
+| Grid-world v2 | Gautschi | 7688863 | 360/360 complete |
+| Grid-world v4 50K | Gautschi | 7791533-38 | 240 runs complete |
+| Grid-world v4 layer gradient | Gautschi | 7801663 | 70 runs complete |
+| Grid-world v4 layer gradient fix | Gautschi | 7835134 | 30 runs complete |
+| SlipperyAnt validate s1-2 | Gautschi | — | cbp > l2 > upgd_full > std > hidden ≈ output |
 
-## Cancelled Jobs
-| Job ID | Cluster | Reason |
-|--------|---------|--------|
-| 10276337 | Gilbreth | rerun_sgd — CSV params don't match WandB |
-| 10276338 | Gilbreth | rerun_adam — same |
-| 10276339 | Gilbreth | rerun_si — same |
-| 10276341 | Gilbreth | rerun_snp — same |
-| 10276342 | Gilbreth | rerun_upgd_full — covered by A0 |
-| 10276343 | Gilbreth | rerun_upgd_output_only — covered by A0 |
-| 10276344 | Gilbreth | rerun_upgd_hidden_only — covered by A0 |
-| 7741158 | Gautschi | gridworld_tier0 — running locally instead |
+## Failed/Canceled
 
-## Monitoring Commands
-```bash
-export PATH="$HOME/projects/localcontrol/bin:$PATH"
-lc-status gautschi
-lc-status gilbreth
-lc-logs gautschi 7739971   # A0 output_only
-lc-logs gautschi 7739973   # A0 hidden_only
-lc-logs gautschi 7780865   # Gridworld Tier 1C
-lc-logs gilbreth 10284522  # Humanoid remaining
-```
+| Job ID | Issue | Fix |
+|--------|-------|-----|
+| 8081852 | Canceled to add cbp_no_gnt | Resubmitted as 8081884; deleted 6 orphaned WandB runs |
+| 8082032 | reset_head with full reinit collapsed at 2M | Changed to optimizer-state reset; resubmitted as 8082254 |
+
+## Lessons Learned
+- `CUSTOM_ARRAY` only works for `EXP_TYPE="custom"` in localcontrol; use `ARRAY_RANGE` for RL
+- Add venv dirs (.upgd) to RSYNC_EXCLUDE to prevent accidental corruption
+- Full output layer reinit in PPO → ratio explosion → collapse. Use shrink-and-perturb instead.
+- Always clean up orphaned WandB runs after canceling jobs (same group/tag pollutes data)
