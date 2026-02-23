@@ -35,6 +35,7 @@ def parse_args():
     p = argparse.ArgumentParser(description='PPO SlipperyAnt replication')
     p.add_argument('--method', type=str, required=True,
                    choices=['std', 'l2', 'cbp', 'cbp_h1', 'cbp_h2', 'cbp_no_gnt',
+                            'cbp_shrink', 'cbp_fast', 'cbp_h1_shrink', 'cbp_h1_full',
                             'reset_head', 'shrink_head',
                             'upgd_full', 'upgd_output_only', 'upgd_hidden_only'])
     p.add_argument('--seed', type=int, required=True,
@@ -211,12 +212,36 @@ class GnT:
                 self.mean_act[i][to_replace] = 0
                 self.ages[i][to_replace] = 0
 
-    def reset_optimizer_state(self, optimizer, features_replaced=None):
-        """Reset Adam state for replaced neurons (optional, improves stability)."""
-        # Standard Adam doesn't track per-element steps, so we just
-        # zero the moments for replaced parameters. This is approximate
-        # but sufficient for replication.
-        pass
+    def activate_layer(self, layer_idx):
+        """Activate a previously inactive layer for replacement.
+
+        Resets ages/utility/mean_act so neurons get a fresh maturity period
+        instead of being mass-replaced (ages would be huge, utility zero).
+        """
+        if layer_idx not in self.active_layers:
+            self.active_layers.append(layer_idx)
+            self.ages[layer_idx].zero_()
+            self.util[layer_idx].zero_()
+            self.mean_act[layer_idx].zero_()
+
+
+def snapshot_weights(agent):
+    """Save a copy of all layer weights for drift measurement."""
+    snap = {}
+    for name, p in agent.named_parameters():
+        snap[name] = p.data.clone()
+    return snap
+
+
+def compute_drift(agent, snapshot):
+    """Compute per-layer normalized drift: ||W_now - W_snap|| / sqrt(params)."""
+    drift = {}
+    for name, p in agent.named_parameters():
+        if name in snapshot:
+            d = (p.data - snapshot[name]).norm().item()
+            n_params = p.numel()
+            drift[name] = d / (n_params ** 0.5)
+    return drift
 
 
 def get_activations(net, x):
@@ -230,11 +255,13 @@ def get_activations(net, x):
     return x, activations
 
 
-def _head_param_ids(agent):
+def _head_param_ids(agent, include_logstd=True):
     """Return set of id() for output layer parameters."""
-    return {id(agent.actor_mean[4].weight), id(agent.actor_mean[4].bias),
-            id(agent.critic[4].weight), id(agent.critic[4].bias),
-            id(agent.actor_logstd)}
+    ids = {id(agent.actor_mean[4].weight), id(agent.actor_mean[4].bias),
+           id(agent.critic[4].weight), id(agent.critic[4].bias)}
+    if include_logstd:
+        ids.add(id(agent.actor_logstd))
+    return ids
 
 
 def _clear_optimizer_state(optimizer, param_ids):
@@ -251,17 +278,12 @@ def reset_head_optimizer(agent, optimizer):
 
 
 def shrink_head(agent, optimizer, alpha=0.5):
-    """Shrink head weights toward LeCun init: w = alpha*w + (1-alpha)*w_init."""
+    """Shrink head weights toward zero: w = alpha*w. Deterministic, no noise."""
     for layer in [agent.actor_mean[4], agent.critic[4]]:
-        fan_in = layer.in_features
-        bound = math.sqrt(3.0 / fan_in)
-        w_init = torch.empty_like(layer.weight).uniform_(-bound, bound)
-        b_init = torch.zeros_like(layer.bias)
-        layer.weight.data.mul_(alpha).add_(w_init, alpha=(1 - alpha))
-        layer.bias.data.mul_(alpha).add_(b_init, alpha=(1 - alpha))
-    # Shrink logstd toward 0
-    agent.actor_logstd.data.mul_(alpha)
-    _clear_optimizer_state(optimizer, _head_param_ids(agent))
+        layer.weight.data.mul_(alpha)
+        layer.bias.data.mul_(alpha)
+    # Only clear optimizer state for params we actually modified (not logstd)
+    _clear_optimizer_state(optimizer, _head_param_ids(agent, include_logstd=False))
 
 
 # ─── Optimizer ──────────────────────────────────────────────────────────────────
@@ -277,6 +299,7 @@ def create_optimizer(agent, args):
         return optim.Adam(agent.parameters(), lr=args.lr,
                           betas=(0.99, 0.99), eps=1e-8, weight_decay=1e-3)
     elif args.method in ('cbp', 'cbp_h1', 'cbp_h2', 'cbp_no_gnt',
+                         'cbp_shrink', 'cbp_fast', 'cbp_h1_shrink', 'cbp_h1_full',
                          'reset_head', 'shrink_head'):
         # CBP / head variants: Dohare et al. params — betas=(0.99, 0.99), wd=1e-4
         return optim.Adam(agent.parameters(), lr=args.lr,
@@ -338,18 +361,24 @@ def main():
     # ── CBP: Generate-and-Test setup ──
     actor_gnt = None
     critic_gnt = None
-    if args.method in ('cbp', 'cbp_h1', 'cbp_h2'):
+    if args.method in ('cbp', 'cbp_h1', 'cbp_h2', 'cbp_shrink', 'cbp_fast',
+                       'cbp_h1_shrink', 'cbp_h1_full'):
         active_layers_map = {
-            'cbp': None,    # both hidden layers
-            'cbp_h1': [0],  # first hidden only
-            'cbp_h2': [1],  # second hidden only
+            'cbp': None,           # both hidden layers
+            'cbp_h1': [0],         # first hidden only
+            'cbp_h2': [1],         # second hidden only
+            'cbp_shrink': None,    # both hidden + head shrink at shift
+            'cbp_fast': None,      # both hidden, lower maturity
+            'cbp_h1_shrink': [0],  # first hidden + head shrink at shift
+            'cbp_h1_full': [0],    # first hidden, then full after 10M
         }
         active = active_layers_map[args.method]
+        mt = 1000 if args.method == 'cbp_fast' else 10000
         actor_gnt = GnT(agent.actor_mean, num_hidden=2, device=device,
-                         replacement_rate=1e-4, maturity_threshold=10000,
+                         replacement_rate=1e-4, maturity_threshold=mt,
                          decay_rate=0.99, active_layers=active)
         critic_gnt = GnT(agent.critic, num_hidden=2, device=device,
-                          replacement_rate=1e-4, maturity_threshold=10000,
+                          replacement_rate=1e-4, maturity_threshold=mt,
                           decay_rate=0.99, active_layers=active)
 
     print(f'Method: {args.method}')
@@ -415,6 +444,7 @@ def main():
     next_done = 0.0
     global_step = 0
     previous_change_time = 0
+    weight_snapshot = snapshot_weights(agent)  # for drift logging
     episode_return = 0.0
     episode_count = 0
     start_time = time.time()
@@ -468,13 +498,29 @@ def main():
                         friction=new_friction, xml_file=xml_file
                     )
                     obs_np, _ = env.reset()
+                    # Per-layer drift logging (all methods)
+                    if wandb is not None and weight_snapshot is not None:
+                        drift = compute_drift(agent, weight_snapshot)
+                        for name, d in drift.items():
+                            wandb.log({f'drift/{name}': d}, step=global_step)
                     # Head intervention at friction change
                     if args.method == 'reset_head':
                         reset_head_optimizer(agent, optimizer)
                         print(f'  >>> HEAD OPTIM RESET at step {global_step}')
-                    elif args.method == 'shrink_head':
+                    elif args.method in ('shrink_head', 'cbp_shrink',
+                                         'cbp_h1_shrink'):
                         shrink_head(agent, optimizer, alpha=0.5)
                         print(f'  >>> HEAD SHRINK at step {global_step}')
+                    # h1→full transition: activate layer 1 after 10M steps
+                    if (args.method == 'cbp_h1_full'
+                            and global_step >= 10_000_000
+                            and actor_gnt is not None
+                            and 1 not in actor_gnt.active_layers):
+                        actor_gnt.activate_layer(1)
+                        critic_gnt.activate_layer(1)
+                        print(f'  >>> H1→FULL transition at step {global_step}')
+                    # Snapshot AFTER all interventions for clean drift measurement
+                    weight_snapshot = snapshot_weights(agent)
                 else:
                     obs_np, _ = env.reset()
 
