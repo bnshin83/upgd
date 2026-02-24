@@ -1,4 +1,4 @@
-# Session Progress — 2026-02-23 (Tue 1am)
+# Session Progress — 2026-02-23 (Tue 4am update)
 
 ## Overview
 20-seed production runs for Walker2d and HumanoidStandup (4 methods × 20 seeds each, 20M steps). Planning 40M extension with checkpoint support.
@@ -8,8 +8,8 @@
 ### Gautschi (H100)
 | Job | Env | Tasks | Method | Status | ETA |
 |-----|-----|-------|--------|--------|-----|
-| 8103978 | Walker2d | 64-79 running (tasks 40-63 done) | output_only | Running | Tue ~6-7am |
-| 8107499 | HumanoidStandup | 42-49 running, 50-59 pending | hidden_only | Running | Tue evening |
+| 8103978 | Walker2d | 6 tasks left (69-70-73-75-76-79) | output_only | Finishing now | Tue ~5am |
+| 8107499 | HumanoidStandup | 42-59 all running | hidden_only | Running | Tue afternoon |
 
 ### Gilbreth (A100)
 | Job | Env | Tasks | Method | Status | ETA |
@@ -17,7 +17,10 @@
 | 10330476 | HumanoidStandup | 60-65 running, 66-79 pending | output_only | Running (6 concurrent) | Wed morning |
 
 ### Completed This Session
+- Gautschi 8103978: Walker2d hidden_only tasks 40-59 (ALL 20 DONE)
+- Gautschi 8103978: Walker2d output_only tasks 60-67,68,71,72,74,77,78 (14/20 done, 6 finishing)
 - Gilbreth 10320607: HumanoidStandup upgd_full tasks 36-39 (all done)
+- Gilbreth 10329294: HumanoidStandup hidden_only tasks 40-41 (all done)
 - Gilbreth 10329294: HumanoidStandup hidden_only tasks 40-41 (all done)
 - Gautschi 8103978: Walker2d hidden_only tasks 40-57 (18/20 done, 2 finishing)
 
@@ -28,16 +31,16 @@
 |--------|-------|--------|
 | adam | 20/20 | Done (full 20M) |
 | upgd_full | 20/20 | Done (full 20M) |
-| upgd_hidden_only | 18/20 done, 2 finishing | ~Done (19.9M plotted) |
-| upgd_output_only | 0/20 done, 20 running | Running (8M plotted, ETA Tue ~6-7am) |
+| upgd_hidden_only | 20/20 | Done (full 20M) |
+| upgd_output_only | 14/20 done, 6 finishing | ~Done (19.1M plotted, ETA Tue ~5am) |
 
 ### HumanoidStandup-v4 — 20 seeds each
 | Method | Seeds | Status |
 |--------|-------|--------|
 | adam | 20/20 | Done (full 20M, Gilbreth) |
-| upgd_full | 20/20 | Done (full 20M, 16 Gilbreth + 4 just finished) |
-| upgd_hidden_only | 2 done (Gilbreth) + 8 running (Gautschi) + 10 pending | Running (10 seeds at 3M plotted) |
-| upgd_output_only | 6 running + 14 pending (Gilbreth) | Just started |
+| upgd_full | 20/20 | Done (full 20M) |
+| upgd_hidden_only | 2 done (Gilbreth) + 18 running (Gautschi) | Running (10 seeds at 11M plotted, ETA Tue afternoon) |
+| upgd_output_only | 6 running + 14 pending (Gilbreth) | Running (6 seeds at 9.3M plotted, ETA Wed morning) |
 
 ## SLURM Scripts
 
@@ -318,9 +321,10 @@ PYEOF
 - **Dashed lines** = in-progress, **solid lines** = complete
 - **MIN_STEPS filter** = 2M (excludes just-started seeds from HumanoidStandup)
 
-## Early Findings
-- **Walker2d:** hidden_only ≈ full >> Adam; output_only below Adam at 8M (still early)
-- **HumanoidStandup:** full > Adam clearly; hidden_only tracking near full (early)
+## Findings (as of Tue 4am)
+- **Walker2d (near-final):** hidden_only ≈ full >> output_only ≈ Adam — classic **input-shift regime** (same as Ant-v4)
+- **HumanoidStandup (partial):** full > hidden_only > output_only > Adam — suggests **joint-shift regime** where protecting all layers matters
+- **Different regimes across envs:** Walker2d matches Ant (input-shift dominant), HumanoidStandup shows different pattern
 - **20M steps insufficient** — curves still rising, planning 40M rerun
 
 ## Next Steps
