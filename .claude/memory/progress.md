@@ -5,61 +5,55 @@
 ### Supervised Learning Experiments
 - Done: Input-permuted MNIST, Label-permuted EMNIST, CIFAR-10, Mini-ImageNet (all methods)
 - Done: Layer-selective UPGD variants comparison
-- Done: WandB config filtering in plot_paper_figures.py (Feb 13)
-- Done: Added all 7 baselines to Table 1 via WandB config-filtered fetch (Feb 13)
-- Done: A0 UPGD full — 18/18 tasks on Gilbreth (10277360) — **Feb 14**
+- Done: A0 seed gap fix — all 3 UPGD methods × 2 datasets × 9 seeds complete
+- Done: WandB config filtering in plot_paper_figures.py
 
 ### RL Experiments
-- Done: Ant-v4 20M timesteps (all methods, 20 seeds)
+- Done: Ant-v4 20M timesteps (all methods, 20+ seeds)
   - Results: Hidden-only (4843) >> Output-only (3229) — confirms input-shift regime
-- Done: Humanoid-v4 test runs (200K) — logger fix validated
-- Done: Humanoid Adam baseline on Gilbreth (job 10271209, 20 seeds)
-- Done: Humanoid upgd_full on Gautschi (tasks 0-19)
-- Done: Grid-world v2 (360/360 tasks on Gautschi, job 7688863)
+- Done: Humanoid-v4 test runs, Adam baseline (20 seeds), upgd_full (20 seeds)
+- Done: Grid-world v2 (360/360 tasks)
+- Done: Grid-world v4 50K comparison (dynamics/reward/joint × 4 methods × 10 seeds)
+- Done: Grid-world v4 100K layer gradient (7 methods × 10 seeds, reward_shift)
+- Done: Grid-world v4 layer gradient fix (L1/L2/L2L3 rerun)
+- Done: Ant-v4 phase-adaptive batch 1 (tasks 0-23, schedules hhh/fff/ooo/adam + partial hhf)
 
 ### Infrastructure
-- Done: Fixed logger race condition (exist_ok=True)
-- Done: localcontrol workflow + dual-cluster monitoring
-- Done: Cross-machine sync (Studio ↔ Pro via Tailscale)
+- Done: Fixed logger race condition, localcontrol workflow, cross-machine sync
+- Done: Local gridworld venv on Studio
 - Done: Fixed hardcoded log path for cross-cluster compatibility
-- Done: Local gridworld venv on Studio (`~/venvs/gridworld/`)
-- Done: Study project setup at ~/projects/study/ with 18-lesson teaching plan (Feb 14)
+- Done: Added `.upgd` to rsync exclude to prevent cluster venv corruption
 
 ## In Progress
 
-### A0: UPGD Seed Gap Fix (CRITICAL for paper)
-- **Gilbreth: a0_upgd_full (10277360) — COMPLETED**
-- Gautschi: a0_upgd_output_only (7739971) — tasks 16-17 running, **finishing tonight**
-- Gautschi: a0_upgd_hidden_only (7739973) — tasks 16-17 running, **finishing tonight**
-- **Status:** ~90% complete, all done by Feb 15 morning
-
-### Gridworld Tier 1C (on Gautschi)
-- Job 7780865: 25 tasks running, more pending
-- WITH WandB tracking (upgd-gridworld project)
-- Tier 0 gate presumably passed (job was submitted)
+### Ant-v4 Phase-Adaptive Gating (40M steps)
+- **Batch 1** (7856803): COMPLETED — 24/24 tasks (schedules 1-4 + partial 5)
+- **Batch 2** (7883799): 24/26 running on Gautschi — ETA Wed Feb 19 morning
+  - Covers schedules 5-10: hhf(seed5), hff, hfh, fhh, hho, ffh
+- Code: `set_gating_mode()` in optimizer, `gating_schedule` in PPO runner
+- Script: `.localcontrol/experiments/rl/ant_40m_phase_adaptive.sh`
 
 ### Humanoid-v4 Remaining (on Gilbreth)
-- Job 10284522: tasks 0-5 running (started after A0 freed GPUs)
-- 36 total tasks (upgd_output_only + upgd_hidden_only seeds)
-- Gautschi job 7609377 still HELD (backup)
+- Job 10284522: 6 running (tasks 36-41), 18 pending (42-59)
+- Methods: upgd_output_only + upgd_hidden_only
+- ETA: ~Fri Feb 21
 
 ## Planned
 
-### After A0 Completion (tonight/tomorrow)
-- Re-run plot_paper_figures.py --cache to regenerate figures
-- Update paper_body_v2.md table + prose if numbers shift
-- Verify 10 seeds per UPGD method × dataset in WandB
+### After Phase-Adaptive Completion (~Wed)
+- Analyze 50 runs on WandB: compare adaptive schedules vs uniform baselines
+- Key question: Does hhf or hff beat hhh at 40M?
+- If promising: extend top-3 schedules to 10 seeds
 
-### After Humanoid Completion
-- B1: Fill existing Ant/Humanoid RL results into paper
+### After Humanoid Completion (~Fri)
+- B1: Fill RL results into paper
 - Generate learning curves and comparison plots
-- Show advisor — decision point on whether more RL needed
 
-### After Gridworld Tier 1C
-- If results show clean regime separation → strongest RL contribution
-- If not → pivot to MuJoCo-only RL story
+### SlipperyAnt (deferred)
+- Phase 1: Fix UPGD (sigma=0.001, remove 1e-8 clamp, port optimizer)
+- Phase 2: Phase-adaptive gating (after Phase 1 succeeds)
 
 ## Cancelled/Resolved
-- 7 rerun configs (rerun_sgd/adam/si/snp/upgd_*) — cancelled, CSV params wrong for baselines
-- Grid-world Tier 0 on Gautschi (7741158) — cancelled, running locally instead
-- Humanoid tasks 24-31 on Gautschi — cancelled (accidentally released)
+- Grid-world Tier 0 on Gautschi (7741158) — cancelled, ran locally
+- ant_40m_phase_adaptive_resub first attempt (7883597) — cancelled, wrong array range (CUSTOM_ARRAY vs ARRAY_RANGE)
+- ant_40m_phase batch 2 original (7856803 tasks 24-49) — crashed in 6s due to torch_shm_manager missing
