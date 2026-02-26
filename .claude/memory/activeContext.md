@@ -1,64 +1,36 @@
 # Active Context
 
-**Last Updated:** 2026-02-23 (Tue 1am)
+**Last Updated:** 2026-02-26
 
 ## Current Focus
-- **20-seed RL production runs:** Walker2d nearly done, HumanoidStandup split across both clusters
-- **40M rerun planned:** 20M insufficient — plan at `plan/checkpoint_resume_40m.md`
-- **SlipperyAnt ablation:** All combo methods completed
+- **All cluster jobs finished** — both Gautschi and Gilbreth queues empty
+- **Study project:** Created ~/projects/study/ with 18-lesson UPGD codebase teaching plan
+- **Lesson 1 in progress:** Iterator protocol (concept-example-quiz format)
 
 ## Active Jobs
+None — all clusters idle.
 
-### Gautschi (H100)
-| Job | Env | Tasks | Method | Status | ETA |
-|-----|-----|-------|--------|--------|-----|
-| 8103978 | Walker2d | 64-79 running | output_only | Running (~4h in) | Tue ~6-7am |
-| 8107499 | HumanoidStandup | 42-49 running, 50-59 pending | hidden_only | Running | Tue evening |
+## Completed Since Last Update
+- Walker2d-v4 20M: all 4 methods × 20 seeds (was running on Gautschi)
+- HumanoidStandup-v4 20M: all 4 methods × 20 seeds (split Gautschi + Gilbreth)
+- SlipperyAnt ablation: all combo methods
+- All previously active Gautschi/Gilbreth jobs
 
-### Gilbreth (A100)
-| Job | Env | Tasks | Method | Status | ETA |
-|-----|-----|-------|--------|--------|-----|
-| 10330476 | HumanoidStandup | 60-65 running, 66-79 pending | output_only | Running (6 concurrent) | Wed morning |
+## Study Project
+- Location: `~/projects/study/`
+- 18 lessons covering full UPGD rebuild (supervised + gridworld DQN + PPO MuJoCo)
+- Plan at: `~/projects/study/plan/`
+- Format: concept → example → quiz (interactive, one question at a time)
+- Current progress: Lesson 01 — iterator delegation concept
 
-*Walker2d hidden_only: 18/20 completed, 2 finishing. Output_only: all 20 running.*
-*HumanoidStandup output_only moved from Gautschi → Gilbreth to parallelize.*
-*Gilbreth 10320607 (upgd_full) + 10329294 (hidden_only 0-1): ALL COMPLETED.*
-
-## Completed Runs
-
-### Walker2d-v4 (Gautschi) — 20 seeds each
-| Method | Seeds | Status | Notes |
-|--------|-------|--------|-------|
-| adam | 20 | Done | Full 20M |
-| upgd_full | 20 | Done | Full 20M |
-| upgd_hidden_only | 18 done, 2 finishing | ~Done | 19.9M plotted |
-| upgd_output_only | 0 done, 20 running | Running | 8M plotted, ETA Tue ~6-7am |
-
-**Plot:** `results/walker2d_4methods_partial.png` — hidden_only ≈ full > Adam > output_only (early)
-
-### HumanoidStandup-v4 — 20 seeds each
-| Method | Seeds | Status | Notes |
-|--------|-------|--------|-------|
-| adam | 20 | Done | Full 20M, on Gilbreth |
-| upgd_full | 20 | Done | Full 20M (16 complete + 4 just finished on Gilbreth) |
-| upgd_hidden_only | 2 done (Gilbreth) + 8 running (Gautschi) | Running | 10 seeds at 3M plotted, ETA Tue evening |
-| upgd_output_only | 0 done, 6 running + 14 pending (Gilbreth) | Running | Just started, ETA Wed morning |
-
-**Plot:** `results/humanoidstandup_4methods_partial.png` — hidden_only tracking near full (early), output_only not plotted yet
-
-### SlipperyAnt Ablation (all completed)
-- Ranking: cbp ≈ shrink_head > cbp_h1 > cbp_h2 > cbp_no_gnt > upgd_full > std
-- Combo methods done: cbp_shrink, cbp_fast, cbp_h1_shrink, cbp_h1_full
-
-### HalfCheetah-v4 (Gilbreth) — status unknown, not checked recently
-
-## Key Findings
-- Walker2d: hidden_only ≈ full >> Adam; output_only below Adam at 8M (still early)
-- HumanoidStandup: full > Adam clearly; hidden_only tracking near full early on
-- 20M steps likely insufficient — planning 40M rerun with checkpoint saving
+## Key Findings (from completed runs)
+- Walker2d: hidden_only ≈ full >> Adam; output_only below Adam at 8M
+- HumanoidStandup: full > Adam clearly; hidden_only tracking near full
+- SlipperyAnt ranking: cbp ≈ shrink_head > cbp_h1 > cbp_h2 > cbp_no_gnt > upgd_full > std
 
 ## Next Actions
-- Implement checkpoint save/resume (`plan/checkpoint_resume_40m.md`) after current runs finish
-- Rerun all 4 methods × 20 seeds at 40M for Walker2d + HumanoidStandup
+- Collect all 20M results from WandB for Walker2d + HumanoidStandup
+- Generate final 4-method plots
+- Decide on 40M reruns (plan at `plan/checkpoint_resume_40m.md`)
 - Check HalfCheetah status on Gilbreth
-- Final 4-method plots when all 20M runs complete (Wed)
+- Continue UPGD lesson plan (Lesson 01 → 18)

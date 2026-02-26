@@ -11,49 +11,46 @@
 ### RL Experiments
 - Done: Ant-v4 20M timesteps (all methods, 20+ seeds)
   - Results: Hidden-only (4843) >> Output-only (3229) — confirms input-shift regime
-- Done: Humanoid-v4 test runs, Adam baseline (20 seeds), upgd_full (20 seeds)
+- Done: Humanoid-v4 20M (adam, upgd_full, hidden_only, output_only × 20 seeds)
+- Done: Walker2d-v4 20M (adam, upgd_full, hidden_only, output_only × 20 seeds)
+- Done: HumanoidStandup-v4 20M (adam, upgd_full, hidden_only, output_only × 20 seeds)
 - Done: Grid-world v2 (360/360 tasks)
 - Done: Grid-world v4 50K comparison (dynamics/reward/joint × 4 methods × 10 seeds)
 - Done: Grid-world v4 100K layer gradient (7 methods × 10 seeds, reward_shift)
 - Done: Grid-world v4 layer gradient fix (L1/L2/L2L3 rerun)
-- Done: Ant-v4 phase-adaptive batch 1 (tasks 0-23, schedules hhh/fff/ooo/adam + partial hhf)
+- Done: Ant-v4 phase-adaptive batch 1+2 (all schedules complete)
+- Done: SlipperyAnt full ablation (std, l2, cbp, cbp_h1/h2/no_gnt, upgd_full, reset/shrink_head, combos)
 
 ### Infrastructure
 - Done: Fixed logger race condition, localcontrol workflow, cross-machine sync
 - Done: Local gridworld venv on Studio
 - Done: Fixed hardcoded log path for cross-cluster compatibility
 - Done: Added `.upgd` to rsync exclude to prevent cluster venv corruption
+- Done: Study project setup at ~/projects/study/ with 18-lesson teaching plan (Feb 14)
 
 ## In Progress
 
-### Ant-v4 Phase-Adaptive Gating (40M steps)
-- **Batch 1** (7856803): COMPLETED — 24/24 tasks (schedules 1-4 + partial 5)
-- **Batch 2** (7883799): 24/26 running on Gautschi — ETA Wed Feb 19 morning
-  - Covers schedules 5-10: hhf(seed5), hff, hfh, fhh, hho, ffh
-- Code: `set_gating_mode()` in optimizer, `gating_schedule` in PPO runner
-- Script: `.localcontrol/experiments/rl/ant_40m_phase_adaptive.sh`
+### Results Collection & Analysis
+- Need to pull all Walker2d + HumanoidStandup 20M results from WandB
+- Need final 4-method plots for both environments
+- 40M rerun decision pending (plan at `plan/checkpoint_resume_40m.md`)
 
-### Humanoid-v4 Remaining (on Gilbreth)
-- Job 10284522: 6 running (tasks 36-41), 18 pending (42-59)
-- Methods: upgd_output_only + upgd_hidden_only
-- ETA: ~Fri Feb 21
+### UPGD Study/Teaching Plan
+- 18 lessons written at ~/projects/study/plan/lessons/
+- Lesson 01 (iterator protocol) started interactively
 
 ## Planned
 
-### After Phase-Adaptive Completion (~Wed)
-- Analyze 50 runs on WandB: compare adaptive schedules vs uniform baselines
-- Key question: Does hhf or hff beat hhh at 40M?
-- If promising: extend top-3 schedules to 10 seeds
+### 40M Reruns (if needed)
+- Implement checkpoint save/resume
+- Rerun all 4 methods × 20 seeds at 40M for Walker2d + HumanoidStandup
 
-### After Humanoid Completion (~Fri)
-- B1: Fill RL results into paper
+### Paper
+- B1: Fill RL results into paper with final plots
 - Generate learning curves and comparison plots
-
-### SlipperyAnt (deferred)
-- Phase 1: Fix UPGD (sigma=0.001, remove 1e-8 clamp, port optimizer)
-- Phase 2: Phase-adaptive gating (after Phase 1 succeeds)
+- Show advisor — decision point on whether more RL needed
 
 ## Cancelled/Resolved
 - Grid-world Tier 0 on Gautschi (7741158) — cancelled, ran locally
-- ant_40m_phase_adaptive_resub first attempt (7883597) — cancelled, wrong array range (CUSTOM_ARRAY vs ARRAY_RANGE)
-- ant_40m_phase batch 2 original (7856803 tasks 24-49) — crashed in 6s due to torch_shm_manager missing
+- ant_40m_phase_adaptive_resub first attempt (7883597) — cancelled, wrong array range
+- ant_40m_phase batch 2 original (7856803 tasks 24-49) — crashed, torch_shm_manager missing
